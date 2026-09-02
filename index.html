@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ISSD — Integrated Site Services Dashboard</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,"Segoe UI",sans-serif;background:#f4f7fb;color:#172033}
+.header{height:64px;background:linear-gradient(90deg,#0f172a 0%,#1e40af 100%);color:white;display:flex;align-items:center;padding:0 28px;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.logo{font-size:20px;font-weight:700;letter-spacing:.5px}.logo span{color:#60a5fa}
+.header-right{display:flex;gap:14px;align-items:center}
+.badge{font-size:12px;background:#059669;padding:6px 12px;border-radius:14px;font-weight:600}
+.date-info{font-size:13px;color:#cbd5e1}
+.layout{display:flex;min-height:calc(100vh - 64px)}
+.side{width:240px;background:#fff;border-right:1px solid #e5eaf0;padding:18px 12px}
+.side-title{font-size:11px;text-transform:uppercase;color:#94a3b8;font-weight:700;letter-spacing:1px;padding:12px 14px 6px}
+.nav{padding:11px 14px;border-radius:8px;margin:3px 0;cursor:pointer;font-size:14px;display:flex;align-items:center;gap:10px;transition:all .15s}
+.nav.active,.nav:hover{background:#e8f0fe;color:#1d4ed8;font-weight:600}
+.main{flex:1;padding:26px;max-width:1500px;overflow-x:hidden}
+.title{font-size:26px;font-weight:700;margin-bottom:4px}.sub{color:#667085;margin-bottom:22px;font-size:14px}
+.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.card{background:#fff;border:1px solid #e5eaf0;border-radius:12px;padding:18px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.04);transition:all .2s;border-top:3px solid transparent}
+.card:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.08)}
+.card.energy{border-top-color:#f59e0b}.card.safety{border-top-color:#dc2626}.card.ga{border-top-color:#8b5cf6}.card.it{border-top-color:#0ea5e9}.card.facility{border-top-color:#10b981}
+.icon{font-size:28px;margin-bottom:6px}.ct{font-weight:700;margin-top:8px;font-size:15px}.cd{font-size:12px;color:#667085;margin-top:4px;line-height:1.4}
+.grid{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;margin-top:20px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
+.panel{background:#fff;border:1px solid #e5eaf0;border-radius:12px;padding:20px}
+.panel h3{margin-top:0;font-size:16px;color:#1e293b;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.panel h3::before{content:"";width:4px;height:18px;background:#1d4ed8;border-radius:2px;display:inline-block}
+textarea,input,select{width:100%;padding:11px;border:1px solid #d0d5dd;border-radius:8px;margin:7px 0 12px;font-size:14px;font-family:inherit}
+textarea:focus,input:focus,select:focus{outline:none;border-color:#1d4ed8;box-shadow:0 0 0 3px rgba(29,78,216,.1)}
+label{font-size:13px;font-weight:600;color:#344054}
+button{border:0;background:#1d4ed8;color:white;padding:11px 18px;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;transition:background .15s}
+button:hover{background:#1e40af}
+button.secondary{background:#eef2f6;color:#344054}button.secondary:hover{background:#dde3ea}
+button.success{background:#059669}button.success:hover{background:#047857}
+.result{margin-top:14px;background:#f8fafc;border-radius:8px;padding:15px;white-space:pre-wrap;line-height:1.7;min-height:80px;font-size:13.5px;border-left:4px solid #1d4ed8}
+.kpi{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #eef2f6;padding:12px 0}
+.kpi:last-child{border:0}
+.kpi-label{font-size:13.5px;color:#475569}.kpi-val{font-weight:700;font-size:14px}
+.green{color:#059669}.orange{color:#d97706}.red{color:#dc2626}.blue{color:#0284c7}.purple{color:#7c3aed}
+.hidden{display:none}.small{font-size:12px;color:#667085}.mt-8{margin-top:8px}.mt-14{margin-top:14px}
+.table{width:100%;border-collapse:collapse;font-size:13.5px}
+.table td,.table th{padding:10px 12px;border-bottom:1px solid #eef2f6;text-align:left}
+.table th{background:#f8fafc;font-weight:600;color:#334155;font-size:12px;text-transform:uppercase;letter-spacing:.3px}
+.table tr:hover td{background:#fafbfc}
+.status{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700}
+.status.ok{background:#dcfce7;color:#166534}.status.warn{background:#fef3c7;color:#92400e}.status.danger{background:#fee2e2;color:#991b1b}.status.info{background:#dbeafe;color:#1e40af}
+.chart-bar{display:flex;align-items:end;gap:10px;height:140px;margin-top:16px;padding:0 8px}
+.bar{flex:1;background:linear-gradient(180deg,#3b82f6,#1d4ed8);border-radius:6px 6px 0 0;position:relative;min-height:8px;transition:all .3s}
+.bar:hover{background:linear-gradient(180deg,#60a5fa,#2563eb)}
+.bar-label{position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);font-size:11px;color:#64748b;white-space:nowrap}
+.bar-val{position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;color:#1e293b}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.stat-box{background:linear-gradient(135deg,#f8fafc,#fff);border:1px solid #e5eaf0;border-radius:10px;padding:14px;text-align:center;position:relative;overflow:hidden;min-height:82px;cursor:pointer;transition:all .2s}
+.stat-box:hover{border-color:#93c5fd;box-shadow:0 4px 12px rgba(29,78,216,.08)}
+.stat-box .cycle-hint{position:absolute;top:4px;right:6px;font-size:10px;color:#94a3b8;letter-spacing:.3px}
+.stat-num{font-size:24px;font-weight:800;color:#1e293b;transition:all .35s cubic-bezier(.4,0,.2,1);display:block;min-height:30px;line-height:1.15}
+.stat-lbl{font-size:11.5px;color:#64748b;margin-top:3px;transition:all .35s cubic-bezier(.4,0,.2,1)}
+.stat-box.swap .stat-num{transform:translateY(-12px);opacity:0}
+.stat-box.swap .stat-lbl{opacity:.4}
+.stat-num.green{color:#059669}.stat-num.orange{color:#d97706}.stat-num.red{color:#dc2626}.stat-num.blue{color:#0284c7}.stat-num.purple{color:#7c3aed}
+.tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid #e5eaf0;padding-bottom:0}
+.tab{padding:9px 16px;border-radius:8px 8px 0 0;cursor:pointer;font-size:13px;font-weight:600;color:#64748b;background:none;border:0}
+.tab.active{color:#1d4ed8;border-bottom:2px solid #1d4ed8;background:#eff6ff}
+.tag{display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;margin-right:4px}
+.tag-e{background:#fef3c7;color:#92400e}.tag-s{background:#fee2e2;color:#991b1b}.tag-g{background:#f3e8ff;color:#6b21a8}.tag-i{background:#e0f2fe;color:#075985}.tag-f{background:#d1fae5;color:#065f46}
+@media(max-width:1100px){.cards{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:1fr}.stat-row{grid-template-columns:repeat(2,1fr)}.grid-3{grid-template-columns:1fr}}
+@media(max-width:640px){.side{display:none}.cards{grid-template-columns:repeat(2,1fr)}.header-right .date-info{display:none}}
+</style>
+</head>
+<body>
+<header class="header">
+  <div class="logo">⚡ ISSD <span>| Integrated Site Services Dashboard</span></div>
+  <div class="header-right">
+    <span class="date-info" id="today"></span>
+    <span class="badge">● LIVE SITE</span>
+  </div>
+</header>
+
+<div class="layout">
+<aside class="side">
+  <div class="side-title">Menu Utama</div>
+  <div class="nav active" onclick="show('home',this)">🏠 Dashboard</div>
+  <div class="nav" onclick="show('energy',this)">⚡ Energy Management</div>
+  <div class="nav" onclick="show('safety',this)">🛡 Safety & HSE</div>
+  <div class="nav" onclick="show('ga',this)">🏢 General Affairs (GA)</div>
+  <div class="nav" onclick="show('it',this)">💻 IT Infrastructure</div>
+  <div class="nav" onclick="show('facility',this)">🔧 Facility Management</div>
+  <div class="side-title" style="margin-top:18px">Lainnya</div>
+  <div class="nav" onclick="show('report',this)">📊 Laporan & Summary</div>
+  <div class="nav" onclick="show('ai',this)">🤖 AI Assistant</div>
+</aside>
+
+<main class="main">
+
+<!-- ===== HOME / DASHBOARD ===== -->
+<section id="home">
+  <div class="title">Dashboard Ringkasan Site Services</div>
+  <div class="sub">Pandangan terpadu seluruh modul layanan site — Energy · Safety · GA · IT · Facility</div>
+
+  <div class="stat-row">
+    <div class="stat-box"><span class="cycle-hint">⟳</span><div class="stat-num green">94%</div><div class="stat-lbl">Kepatuhan Safety Bulan Ini</div></div>
+    <div class="stat-box energy-cycle" data-variants='[
+      {"num":"▲ 10.8%","lbl":"Listrik Agu vs Jul (kWh)","cls":"green"},
+      {"num":"555,103","lbl":"kWh · Listrik Agu 2026","cls":""},
+      {"num":"555.1 MWh","lbl":"Energi Agu (MWh)","cls":"blue"},
+      {"num":"1,998 GJ","lbl":"Energi Agu (Giga Joule)","cls":"orange"},
+      {"num":"Rp 814.37 Jt","lbl":"Biaya Listrik Agu","cls":"purple"},
+      {"num":"388.6 ton","lbl":"Estimasi CO₂ Listrik Agu","cls":"red"}
+    ]' onclick="cycleStat(this)"><span class="cycle-hint">⟳ klik</span><div class="stat-num green">▲ 10.8%</div><div class="stat-lbl">Listrik Agu vs Jul (kWh)</div></div>
+    <div class="stat-box"><span class="cycle-hint">⟳</span><div class="stat-num blue">18</div><div class="stat-lbl">Tiket IT Open</div></div>
+    <div class="stat-box"><span class="cycle-hint">⟳</span><div class="stat-num purple">98.7%</div><div class="stat-lbl">Uptime Facility</div></div>
+  </div>
+
+  <div class="cards">
+    <div class="card energy" onclick="show('energy')"><div class="icon">⚡</div><div class="ct">Energy</div><div class="cd">Listrik · Gas · Air · Panel Surya · Efisiensi</div></div>
+    <div class="card safety" onclick="show('safety')"><div class="icon">🛡</div><div class="ct">Safety & HSE</div><div class="cd">Insiden · Near Miss · PPE · Inspeksi · Izin Kerja</div></div>
+    <div class="card ga" onclick="show('ga')"><div class="icon">🏢</div><div class="ct">General Affairs</div><div class="cd">Kendaraan · ATK · Resepsionis · Kantor · Catering</div></div>
+    <div class="card it" onclick="show('it')"><div class="icon">💻</div><div class="ct">IT Infrastructure</div><div class="cd">Jaringan · Server · Tiket · Inventaris · Keamanan</div></div>
+    <div class="card facility" onclick="show('facility')"><div class="icon">🔧</div><div class="ct">Facility</div><div class="cd">AC · Plumbing · Lift · Genset · Perawatan Gedung</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h3>📈 Konsumsi Listrik 6 Bulan Terakhir (ribu kWh — Sumber: Monthly Electricity Report 2026)</h3>
+      <div class="chart-bar" id="energyChart"></div>
+      <div style="height:24px"></div>
+    </div>
+    <div class="panel">
+      <h3>🔔 Today's Site Alert</h3>
+      <div class="kpi"><span class="kpi-label"><span class="tag tag-s">SAFETY</span> Hot Work Area B3</span><b class="kpi-val orange">Perlu Pengawasan</b></div>
+      <div class="kpi"><span class="kpi-label"><span class="tag tag-e">ENERGY</span> Gas Agu ↑63% vs 6-bulan avg</span><b class="kpi-val orange">6,305 m³</b></div>
+      <div class="kpi"><span class="kpi-label"><span class="tag tag-e">ENERGY</span> Air Bulan Jun Puncak</span><b class="kpi-val red">7,462 m³</b></div>
+      <div class="kpi"><span class="kpi-label"><span class="tag tag-i">IT</span> Server Rack A4 Suhu</span><b class="kpi-val orange">29°C — Periksa AC</b></div>
+      <div class="kpi"><span class="kpi-label"><span class="tag tag-f">FACILITY</span> Lift Lantai 2</span><b class="kpi-val green">Selesai Servis</b></div>
+    </div>
+  </div>
+
+  <div class="grid mt-14">
+    <div class="panel">
+      <h3>📋 Tiket & Work Order Terbaru</h3>
+      <table class="table">
+        <tr><th>No</th><th>Modul</th><th>Uraian</th><th>Status</th><th>Prioritas</th></tr>
+        <tr><td>WO-0921</td><td><span class="tag tag-f">Facility</span></td><td>AC Ruang Rapat 3 bocor</td><td><span class="status warn">In Progress</span></td><td>High</td></tr>
+        <tr><td>WO-0920</td><td><span class="tag tag-i">IT</span></td><td>WiFi Lantai 1 lemah</td><td><span class="status ok">Open</span></td><td>Medium</td></tr>
+        <tr><td>WO-0919</td><td><span class="tag tag-s">Safety</span></td><td>APAR Gudang A kadaluarsa</td><td><span class="status danger">Pending</span></td><td>Critical</td></tr>
+        <tr><td>WO-0918</td><td><span class="tag tag-g">GA</span></td><td>Pengajuan kendaraan operasional</td><td><span class="status ok">Approved</span></td><td>Low</td></tr>
+        <tr><td>WO-0917</td><td><span class="tag tag-e">Energy</span></td><td>Kalibrasi meter listrik Genset</td><td><span class="status info">Scheduled</span></td><td>Medium</td></tr>
+      </table>
+    </div>
+    <div class="panel">
+      <h3>🎯 Target vs Realisasi Bulan Ini (Agustus 2026)</h3>
+      <div class="kpi"><span class="kpi-label">Zero Incident (Safety)</span><b class="kpi-val green">ON TRACK</b></div>
+      <div class="kpi"><span class="kpi-label">Penghematan Energi ≥ 5%</span><b class="kpi-val orange">△ Agu +10.8% vs Jul (Review)</b></div>
+      <div class="kpi"><span class="kpi-label">Konsumsi Air ≤ 6.500 m³</span><b class="kpi-val green">6.233 m³ (OK)</b></div>
+      <div class="kpi"><span class="kpi-label">Konsumsi Gas ≤ 7.000 m³</span><b class="kpi-val green">6.305 m³ (OK)</b></div>
+      <div class="kpi"><span class="kpi-label">SLA IT ≤ 4 jam</span><b class="kpi-val green">92% Tercapai</b></div>
+      <div class="kpi"><span class="kpi-label">Preventive Maintenance AC</span><b class="kpi-val green">100% Selesai</b></div>
+      <div class="kpi"><span class="kpi-label">Kepuasan Pengguna</span><b class="kpi-val blue">4.6 / 5.0</b></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ENERGY ===== -->
+<section id="energy" class="hidden">
+  <div class="title">⚡ Energy Management</div>
+  <div class="sub">Pemantauan & analisis konsumsi energi — Sumber: <b>Monthly Electricity Report 2026</b> + <b>Laporan Air & Gas 2026</b></div>
+
+  <div class="stat-row">
+    <div class="stat-box energy-cycle" data-variants='[
+      {"num":"555,103","lbl":"kWh · Listrik Agu 2026","cls":""},
+      {"num":"555.10 MWh","lbl":"Listrik Agu (Mega Watt hour)","cls":""},
+      {"num":"1,998.37 GJ","lbl":"Listrik Agu (Giga Joule)","cls":"blue"},
+      {"num":"Rp 814.37 Jt","lbl":"Biaya Listrik Agu (@ Rp 1.467/kWh)","cls":"purple"},
+      {"num":"388.57 ton","lbl":"Emisi CO₂ Listrik Agu (0.7 kg/kWh)","cls":"red"},
+      {"num":"~27,755 eko","lbl":"Setara EMisi Mobil Bensin (14 km/L · sekota)","cls":"orange"}
+    ]' onclick="cycleStat(this)"><span class="cycle-hint">⟳ klik</span><div class="stat-num">555,103</div><div class="stat-lbl">kWh · Listrik Agu 2026</div></div>
+    <div class="stat-box energy-cycle" data-variants='[
+      {"num":"6,305","lbl":"Nm³ Gas Alam · Agu 2026","cls":""},
+      {"num":"1,393 MMBtu","lbl":"Gas Agu (Million BTU) · dari Laporan","cls":""},
+      {"num":"53.59 M kkal","lbl":"Gas Agu (kalori · 8.500 kkal/Nm³)","cls":"blue"},
+      {"num":"Rp 59.90 Jt","lbl":"Biaya Gas Agu (@ Rp 9.500/Nm³)","cls":"purple"},
+      {"num":"13.62 ton","lbl":"Emisi CO₂ Gas Agu (2.16 kg/Nm³)","cls":"red"},
+      {"num":"6,305,000 L","lbl":"Setara Liter Air (1 Nm³ ≈ 1000L ekuivalen)","cls":"orange"}
+    ]' onclick="cycleStat(this)"><span class="cycle-hint">⟳ klik</span><div class="stat-num">6,305</div><div class="stat-lbl">Nm³ Gas Alam · Agu 2026</div></div>
+    <div class="stat-box energy-cycle" data-variants='[
+      {"num":"6,233","lbl":"m³ Air · Agu 2026","cls":""},
+      {"num":"6.233 ML","lbl":"Air Agu (Mega Liter = Juta Liter)","cls":""},
+      {"num":"6,233,000 L","lbl":"Air Agu (dalam Liter)","cls":"blue"},
+      {"num":"328,052 gln","lbl":"Air Agu (galon 19 L)","cls":""},
+      {"num":"Rp 56.10 Jt","lbl":"Biaya Air Agu (@ Rp 9.000/m³ avg)","cls":"purple"},
+      {"num":"591 m³","lbl":"Sewage diolah Agu (Laporan Air & Gas)","cls":"red"},
+      {"num":"~6.233 kg O₂","lbl":"Oksigen terlarut (1ppm · asumsi)","cls":"orange"}
+    ]' onclick="cycleStat(this)"><span class="cycle-hint">⟳ klik</span><div class="stat-num">6,233</div><div class="stat-lbl">m³ Air · Agu 2026</div></div>
+    <div class="stat-box energy-cycle" data-variants='[
+      {"num":"Rp 968 Jt","lbl":"Total Biaya Energi Agu (Estimasi)","cls":"green"},
+      {"num":"$ 63,000","lbl":"Total Biaya Agu (kurs Rp 15.360)","cls":"blue"},
+      {"num":"Rp 31,2 Jt","lbl":"Rata-rata / hari Agu 2026","cls":"purple"},
+      {"num":"Rp 1,743 /kWh","lbl":"Blended Rate (Listrik+Gas+Air)/kWh","cls":"orange"},
+      {"num":"415.86 ton CO₂e","lbl":"Total Emisi Agu (Listrik+Gas)","cls":"red"},
+      {"num":"≈ 18,3 pohon","lbl":"Offset CO₂ butuh pohon dewasa/tahun","cls":"green"}
+    ]' onclick="cycleStat(this)"><span class="cycle-hint">⟳ klik</span><div class="stat-num green">Rp 968 Jt</div><div class="stat-lbl">Total Biaya Energi Agu</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h3>🧮 Kalkulator Analisis Konsumsi Energi</h3>
+      <div class="tabs">
+        <button class="tab active" onclick="eTab(0,this)">Listrik</button>
+        <button class="tab" onclick="eTab(1,this)">Gas Alam</button>
+        <button class="tab" onclick="eTab(2,this)">Efisiensi & Air</button>
+      </div>
+      <div id="et0">
+        <label>Pemakaian Listrik Bulan Ini (kWh) — default: Agu 2026</label>
+        <input id="ekwh" type="number" value="555103" step="100">
+        <label>Target / Baseline Bulan Lalu (kWh) — default: Jul 2026</label>
+        <input id="ebase" type="number" value="501163" step="100">
+        <label>Tarif Listrik per kWh (Rp — rata-rata B1 Industri)</label>
+        <input id="etarif" type="number" value="1467">
+        <button onclick="calcListrik()">Hitung Analisis</button>
+        <div id="eRes" class="result"></div>
+      </div>
+      <div id="et1" class="hidden">
+        <label>Pemakaian Gas Bulan Ini (Nm³) — default: Agu 2026</label><input id="gas1" type="number" value="6305">
+        <label>Harga Gas per Nm³ (Rp — PGN / non-subsidi)</label><input id="gas2" type="number" value="9500">
+        <label>Kalor Jenis Gas (kcal/Nm³ — typical 8.400~8.600)</label><input id="gas3" type="number" value="8500">
+        <button onclick="calcGas()">Hitung</button>
+        <div id="eRes2" class="result"></div>
+      </div>
+      <div id="et2" class="hidden">
+        <label>Konsumsi Awal (kWh / Nm³ / m³) — contoh: bulan lalu</label><input id="eff1" type="number" value="501163">
+        <label>Konsumsi Setelah Perbaikan — bulan ini</label><input id="eff2" type="number" value="555103">
+        <label>Volume Aktivitas (unit acuan: ton produksi / hari kerja / dll)</label><input id="eff3" type="number" value="1520">
+        <button onclick="calcEff()">Hitung Efisiensi</button>
+        <div id="eRes3" class="result"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>🗂 Pembagian Konsumsi per Departemen — Agu 2026 (kWh)</h3>
+      <table class="table">
+        <tr><th>Departemen / Area</th><th>kWh Agu</th><th>Porsi</th><th>vs Jul</th></tr>
+        <tr><td><b>Site Service / Utilitas</b> (AC, Lighting, Boiler, Genset, Maintenance)</td><td>297,369</td><td>53.6%</td><td><span class="orange">▲ 1.7%</span></td></tr>
+        <tr><td><b>Production</b> (Grinding, Pulping, Drying, Slitting, SVG)</td><td>230,093</td><td>41.4%</td><td><span class="orange">▲ 24.5%</span></td></tr>
+        <tr><td><b>Supply Chain / Warehouse</b> (Finished Goods, Raw Material WH)</td><td>23,415</td><td>4.2%</td><td><span class="orange">▲ 16.9%</span></td></tr>
+        <tr><td><b>Quality Control / Lab</b> (QC Lab equipment)</td><td>3,663</td><td>0.7%</td><td><span class="green">▼ 0.6%</span></td></tr>
+        <tr><td><b>Technology / RnD Center</b></td><td>563</td><td>0.1%</td><td><span class="orange">▲ 85.2%</span></td></tr>
+        <tr><td><b>TOTAL PLANT</b></td><td><b>555,103</b></td><td><b>100%</b></td><td><b><span class="orange">▲ 10.8%</span></b></td></tr>
+      </table>
+
+      <div class="mt-14">
+        <h3 style="margin-bottom:8px">📊 Rekap Bulanan 8 Bulan Terakhir (Jan–Agu 2026)</h3>
+        <table class="table">
+          <tr><th>Bulan</th><th>Listrik (kWh)</th><th>Gas (m³)</th><th>Air (m³)</th></tr>
+          <tr><td>Jan 2026</td><td>13,644,111 *</td><td>5,387</td><td>5,278</td></tr>
+          <tr><td>Feb 2026</td><td>456,174</td><td>2,447</td><td>3,202</td></tr>
+          <tr><td>Mar 2026</td><td>343,251</td><td>2,624</td><td>3,978</td></tr>
+          <tr><td>Apr 2026</td><td>400,000 ≈</td><td>2,286</td><td>4,539</td></tr>
+          <tr><td>Mei 2026</td><td>600,000 ≈</td><td>4,852</td><td>4,115</td></tr>
+          <tr><td>Jun 2026</td><td>369,891</td><td>7,751</td><td>7,462</td></tr>
+          <tr><td>Jul 2026</td><td>501,163</td><td>7,723</td><td>6,665</td></tr>
+          <tr style="background:#eff6ff;font-weight:700"><td>Agu 2026</td><td>555,103</td><td>6,305</td><td>6,233</td></tr>
+          <tr style="background:#f0fdf4"><td><b>YTD Jan–Agu TOTAL</b></td><td><b>~ 16,869,693</b></td><td><b>39,375</b></td><td><b>41,472</b></td></tr>
+        </table>
+        <p class="small mt-8">* Catatan: Nilai Jan 2026 sangat tinggi karena merupakan pembacaan meter kumulatif awal tahun (zero reset). Bulan Feb s/d Agu adalah delta bulanan normal.</p>
+      </div>
+
+      <div class="mt-14">
+        <h3 style="margin-bottom:8px">🌱 Renewable & Green Energy</h3>
+        <div class="kpi"><span class="kpi-label">Panel Surya (rencana — 50 kWp)</span><b class="kpi-val orange">Feasibility Study</b></div>
+        <div class="kpi"><span class="kpi-label">Estimasi Panen kWh/bulan (50 kWp)</span><b class="kpi-val blue">~ 58,000 kWh</b></div>
+        <div class="kpi"><span class="kpi-label">Offset % dari Agu 2026</span><b class="kpi-val">~ 10.4%</b></div>
+        <div class="kpi"><span class="kpi-label">Estimasi Penghematan CO₂ / bulan</span><b class="kpi-val green">≈ 49.3 ton CO₂e</b></div>
+        <div class="kpi"><span class="kpi-label">ROI Estimasi (tarif Rp 1.467)</span><b class="kpi-val">± 6.8 tahun</b></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SAFETY ===== -->
+<section id="safety" class="hidden">
+  <div class="title">🛡 Safety & HSE</div>
+  <div class="sub">Kepatuhan, insiden, near miss, izin kerja, dan inspeksi keselamatan kerja</div>
+
+  <div class="stat-row">
+    <div class="stat-box"><div class="stat-num green">0</div><div class="stat-lbl">Lost Time Injury (LTI)</div></div>
+    <div class="stat-box"><div class="stat-num orange">3</div><div class="stat-lbl">Near Miss Bulan Ini</div></div>
+    <div class="stat-box"><div class="stat-num">127</div><div class="stat-lbl">Izin Kerja Terbit</div></div>
+    <div class="stat-box"><div class="stat-num blue">94%</div><div class="stat-lbl">Skor Kepatuhan PPE</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h3>⚠️ Analisis Risiko Pekerjaan (JSA — Job Safety Analysis)</h3>
+      <label>Jenis Pekerjaan</label>
+      <select id="sJob">
+        <option value="hotwork">Hot Work (Welding, Grinding, Cutting)</option>
+        <option value="workheight">Bekerja di Ketinggian (≥ 2 m)</option>
+        <option value="confined">Confined Space (ruang tertutup)</option>
+        <option value="electrical">Pekerjaan Listrik</option>
+        <option value="lifting">Lifting / Rigging</option>
+        <option value="lain">Pekerjaan Lainnya</option>
+      </select>
+      <label>Lokasi & Kondisi Lapangan</label>
+      <textarea id="sDesc" rows="4" placeholder="Contoh: Welding di area pipa LPG, ada material mudah terbakar di sekelilingnya, ventilasi kurang baik..."></textarea>
+      <label>Jumlah Pekerja</label><input id="sPekerja" type="number" value="2">
+      <label>Peralatan yang Digunakan</label><input id="sAlat" placeholder="Contoh: Mesin las, gerinda, APAR, scaffolding..." value="Mesin las, gerinda tangan, APAR 6 kg">
+      <button onclick="jsa()">Generate Risk Analysis</button>
+      <div id="sRes" class="result"></div>
+    </div>
+    <div class="panel">
+      <h3>📋 Inspeksi Safety Terbaru</h3>
+      <table class="table">
+        <tr><th>Tanggal</th><th>Area</th><th>Temuan</th><th>Status</th></tr>
+        <tr><td>29 Aug</td><td>Gudang B3</td><td>APAR 2 unit kadaluarsa</td><td><span class="status danger">Pending</span></td></tr>
+        <tr><td>28 Aug</td><td>Line Produksi 2</td><td>Rambu safety tertutup material</td><td><span class="status ok">Closed</span></td></tr>
+        <tr><td>27 Aug</td><td>Roof Top</td><td>Pagar pembatas kurang</td><td><span class="status warn">Progress</span></td></tr>
+        <tr><td>26 Aug</td><td>Ruang Genset</td><td>Tangki solar kurang rambu</td><td><span class="status ok">Closed</span></td></tr>
+      </table>
+      <div class="mt-14">
+        <h3 style="margin-bottom:8px">🎖 Statistik Safety Tahun Ini</h3>
+        <div class="kpi"><span class="kpi-label">Total Work Hours</span><b class="kpi-val">1,284,500 jam</b></div>
+        <div class="kpi"><span class="kpi-label">LTIFR (Lost Time Injury Freq.)</span><b class="kpi-val green">0.00</b></div>
+        <div class="kpi"><span class="kpi-label">TRIFR (Total Recordable)</span><b class="kpi-val green">0.78</b></div>
+        <div class="kpi"><span class="kpi-label">Safety Talk Dilaksanakan</span><b class="kpi-val blue">124 sesi</b></div>
+        <div class="kpi"><span class="kpi-label">Pelatihan Pekerja Baru</span><b class="kpi-val">38 orang</b></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== GA ===== -->
+<section id="ga" class="hidden">
+  <div class="title">🏢 General Affairs (GA)</div>
+  <div class="sub">Manajemen perkantoran: kendaraan operasional, ATK, resepsionis, kebersihan, catering</div>
+
+  <div class="stat-row">
+    <div class="stat-box"><div class="stat-num">24</div><div class="stat-lbl">Unit Kendaraan Operasional</div></div>
+    <div class="stat-box"><div class="stat-num green">96%</div><div class="stat-lbl">Tingkat Kehadiran Karyawan</div></div>
+    <div class="stat-box"><div class="stat-num">1,842</div><div class="stat-lbl">Pengunjung Bulan Ini</div></div>
+    <div class="stat-box"><div class="stat-num orange">7</div><div class="stat-lbl">Item ATK Stok Menipis</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h3>🚗 Form Peminjaman Kendaraan Operasional</h3>
+      <label>Nama Peminjam & Departemen</label>
+      <input id="gNama" placeholder="Contoh: Budi Santoso — Dept. Production">
+      <label>Tanggal & Jam Pakai</label><input id="gTgl" type="datetime-local">
+      <label>Tujuan</label><textarea id="gTujuan" rows="2" placeholder="Kantor Pusat Jakarta — mengambil dokumen kontrak"></textarea>
+      <label>Jenis Kendaraan</label>
+      <select id="gMobil">
+        <option>Pick Up (Barang) — B 1234 XYZ</option>
+        <option>Avanza (Penumpang) — B 5678 ABC</option>
+        <option>APV (6 Penumpang) — B 9012 DEF</option>
+        <option>Box Truck 4 Roda — B 3456 GHI</option>
+      </select>
+      <label>Supir</label>
+      <select id="gSupir"><option>Tidak Pakai Supir (Self Drive)</option><option>Ahmad (SIM A)</option><option>Soleh (SIM A/B1)</option><option>Joko (SIM B2)</option></select>
+      <label>Estimasi Kilometer (km)</label><input id="gKm" type="number" value="80">
+      <button class="success" onclick="pinjamMobil()">Ajukan Peminjaman</button>
+      <div id="gRes" class="result"></div>
+    </div>
+    <div class="panel">
+      <h3>📦 Monitoring Stok ATK Kritis</h3>
+      <table class="table">
+        <tr><th>Item</th><th>Stok</th><th>ROP</th><th>Status</th></tr>
+        <tr><td>Kertas A4 (rim)</td><td>18</td><td>30</td><td><span class="status danger">Order Now</span></td></tr>
+        <tr><td>Pulpen Hitam (pcs)</td><td>42</td><td>50</td><td><span class="status warn">Low</span></td></tr>
+        <tr><td>Paper Clip (kotak)</td><td>25</td><td>20</td><td><span class="status ok">OK</span></td></tr>
+        <tr><td>Map Stopmap Plastik</td><td>12</td><td>30</td><td><span class="status danger">Order Now</span></td></tr>
+        <tr><td>Tinta Printer HP 803 BK</td><td>5</td><td>10</td><td><span class="status warn">Low</span></td></tr>
+        <tr><td>Soft File Manilla</td><td>80</td><td>40</td><td><span class="status ok">OK</span></td></tr>
+      </table>
+      <div class="mt-14">
+        <h3 style="margin-bottom:8px">📅 Kegiatan & Reservasi</h3>
+        <div class="kpi"><span class="kpi-label">Ruang Rapat Utama Hari Ini</span><b class="kpi-val">3/6 Slot</b></div>
+        <div class="kpi"><span class="kpi-label">Meeting Eksternal</span><b class="kpi-val blue">2 acara</b></div>
+        <div class="kpi"><span class="kpi-label">Catering Pemesanan</span><b class="kpi-val">38 porsi</b></div>
+        <div class="kpi"><span class="kpi-label">Booking Mobil Hari Ini</span><b class="kpi-val orange">5 unit</b></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== IT ===== -->
+<section id="it" class="hidden">
+  <div class="title">💻 IT Infrastructure & Helpdesk</div>
+  <div class="sub">Monitoring jaringan, server, inventaris perangkat, tiket helpdesk, dan keamanan</div>
+
+  <div class="stat-row">
+    <div class="stat-box"><div class="stat-num green">99.97%</div><div class="stat-lbl">Uptime Jaringan</div></div>
+    <div class="stat-box"><div class="stat-num">18</div><div class="stat-lbl">Tiket Helpdesk Open</div></div>
+    <div class="stat-box"><div class="stat-num blue">412</div><div class="stat-lbl">Perangkat Aktif Terdaftar</div></div>
+    <div class="stat-box"><div class="stat-num orange">2</div><div class="stat-lbl">Alert Keamanan 24 Jam</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h3>🎛 Troubleshooting AI — Diagnosa Masalah IT</h3>
+      <label>Kategori Permasalahan</label>
+      <select id="iCat">
+        <option value="net">Tidak bisa akses Internet / Jaringan</option>
+        <option value="email">Email tidak bisa send/receive</option>
+        <option value="wifi">WiFi connect tapi tidak ada internet</option>
+        <option value="print">Printer tidak bisa mencetak</option>
+        <option value="vpn">Akses VPN gagal</option>
+        <option value="slow">Komputer / Aplikasi lambat</option>
+        <option value="pw">Lupa password / akun terkunci</option>
+      </select>
+      <label>Jelaskan gejalanya (sudah coba apa saja?)</label>
+      <textarea id="iProb" rows="4" placeholder="Contoh: WiFi kantor lantai 3 connect tapi tidak bisa buka Google. Sudah restart laptop dan lupakan wifi, masih sama. Teman sebelah bisa internet..."></textarea>
+      <label>Nama / Hostname Perangkat</label><input id="iHost" value="PC-PROD-087 — Windows 11">
+      <button onclick="itTrouble()">Lakukan Diagnosa</button>
+      <div id="iRes" class="result"></div>
+    </div>
+    <div class="panel">
+      <h3>🖥 Kondisi Server & Infrastruktur</h3>
+      <div class="kpi"><span class="kpi-label">🌐 Internet Primary (500 Mbps)</span><b class="kpi-val green">Online · 482 Mbps</b></div>
+      <div class="kpi"><span class="kpi-label">🌐 Internet Backup (100 Mbps)</span><b class="kpi-val blue">Stand-by</b></div>
+      <div class="kpi"><span class="kpi-label">🖥 Server File (PROD-FS01)</span><b class="kpi-val green">CPU 34% · RAM 62%</b></div>
+      <div class="kpi"><span class="kpi-label">🖥 Server Domain (PROD-DC01)</span><b class="kpi-val green">CPU 18% · RAM 41%</b></div>
+      <div class="kpi"><span class="kpi-label">🖥 Rack Temperature</span><b class="kpi-val orange">29°C — cek AC</b></div>
+      <div class="kpi"><span class="kpi-label">💾 Backup Daily</span><b class="kpi-val green">Berhasil 100%</b></div>
+      <div class="mt-14">
+        <h3 style="margin-bottom:8px">🎫 Tiket Helpdesk Terbaru</h3>
+        <table class="table">
+          <tr><th>ID</th><th>User</th><th>Masalah</th><th>Status</th></tr>
+          <tr><td>T-2309</td><td>Dewi</td><td>Password akun terkunci</td><td><span class="status ok">Solved</span></td></tr>
+          <tr><td>T-2308</td><td>Rudi</td><td>Printer HP LaserJet error 50</td><td><span class="status warn">Assigned</span></td></tr>
+          <tr><td>T-2307</td><td>Sari</td><td>Outlook tidak sync</td><td><span class="status info">Pending</span></td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FACILITY ===== -->
+<section id="facility" class="hidden">
+  <div class="title">🔧 Facility Management</div>
+  <div class="sub">Pemantauan dan perawatan gedung: AC, plumbing, listrik, lift, genset, dan infrastruktur gedung</div>
+
+  <div class="stat-row">
+    <div class="stat-box"><div class="stat-num green">100%</div><div class="stat-lbl">Preventive Maintenance (Bulan Ini)</div></div>
+    <div class="stat-box"><div class="stat-num">86</div><div class="stat-lbl">Unit AC Indoor</div></div>
+    <div class="stat-box"><div class="stat-num blue">12</div><div class="stat-lbl">Work Order Aktif</div></div>
+    <div class="stat-box"><div class="stat-num green">100%</div><div class="stat-lbl">Ketersediaan Lift/Escalator</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <h3>❄️ Monitoring & Kalkulator Beban AC</h3>
+      <div class="tabs">
+        <button class="tab active" onclick="fTab(0,this)">Kalkulasi Beban AC</button>
+        <button class="tab" onclick="fTab(1,this)">Form Work Order</button>
+      </div>
+      <div id="ft0">
+        <label>Panjang Ruangan (m)</label><input id="fP" type="number" value="8">
+        <label>Lebar Ruangan (m)</label><input id="fL" type="number" value="6">
+        <label>Tinggi Ruangan (m)</label><input id="fT" type="number" value="3">
+        <label>Jumlah Orang (max)</label><input id="fO" type="number" value="12">
+        <label>Peralatan Elektronik (PC, projector, dll)</label>
+        <select id="fEquip"><option value="ringan">Ringan (beberapa PC)</option><option value="sedang" selected>Sedang (PC + projector + printer)</option><option value="berat">Berat (Server / Lab elektronik)</option></select>
+        <label>Exposure Sinar Matahari</label>
+        <select id="fSun"><option>Terbuka (banyak jendela)</option selected>Normal (sebagian tertutup)</option><option>Tertutup (tanpa jendela)</option></select>
+        <button onclick="calcAC()">Hitung Kebutuhan PK</button>
+        <div id="fRes" class="result"></div>
+      </div>
+      <div id="ft1" class="hidden">
+        <label>Lokasi / Nomor Ruang</label><input id="fLoc" placeholder="Contoh: Lantai 2 — Ruang Rapat Merah">
+        <label>Jenis Masalah</label>
+        <select id="fMasalah">
+          <option>AC Tidak Dingin / Bocor</option>
+          <option>Lampu Mati / Kelistrikan</option>
+          <option>Plumbing (Toilet / Keran / Air)</option>
+          <option>Lift / Escalator</option>
+          <option>Pintu / Jendela / Furniture</option>
+          <option>Kebersihan / Kebun</option>
+          <option>Lainnya</option>
+        </select>
+        <label>Detail Masalah & Urgensi</label>
+        <textarea id="fWO" rows="4" placeholder="Jelaskan secara rinci. Kapan terjadi? ada suara aneh? bau? membahayakan?"></textarea>
+        <label>Pelapor</label><input id="fPelapor" placeholder="Nama & Nomor HP">
+        <label>Urgensi</label>
+        <select id="fUrgensi"><option>Rendah — < 2 hari</option selected>Sedang — < 8 jam</option><option>Tinggi — < 1 jam (gangguan operasional)</option></select>
+        <button class="success" onclick="submitWO()">Buat Work Order</button>
+        <div id="fRes2" class="result"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>⚙️ Jadwal Preventive Maintenance</h3>
+      <table class="table">
+        <tr><th>Peralatan</th><th>Total Unit</th><th>Selesai</th><th>Progress</th><th>Jadwal Berikut</th></tr>
+        <tr><td>AC Split 1-5 PK</td><td>78</td><td>78</td><td><span class="green">100%</span></td><td>Okt 2026</td></tr>
+        <tr><td>AC Central / AHU</td><td>8</td><td>8</td><td><span class="green">100%</span></td><td>Okt 2026</td></tr>
+        <tr><td>Lift Penumpang (3 unit)</td><td>3</td><td>3</td><td><span class="green">100%</span></td><td>15 Sep 2026</td></tr>
+        <tr><td>Escalator (4 unit)</td><td>4</td><td>4</td><td><span class="green">100%</span></td><td>20 Sep 2026</td></tr>
+        <tr><td>Genset 500 kVA</td><td>2</td><td>2</td><td><span class="green">100%</span></td><td>10 Sep 2026</td></tr>
+        <tr><td>Fire Alarm & Hydrant</td><td>1 sistem</td><td>0</td><td><span class="orange">0% — Minggu ini</span></td><td>03 Sep 2026</td></tr>
+        <tr><td>Panel Listrik & Trafo</td><td>36</td><td>36</td><td><span class="green">100%</span></td><td>Des 2026</td></tr>
+      </table>
+      <div class="mt-14">
+        <h3 style="margin-bottom:8px">🔴 Alarms & Komplain Aktif</h3>
+        <div class="kpi"><span class="kpi-label">AC Ruang Server</span><b class="kpi-val red">Suhu 31°C — kritikal</b></div>
+        <div class="kpi"><span class="kpi-label">Toilet Lantai 1 Pria</span><b class="kpi-val orange">Pipa tersumbat</b></div>
+        <div class="kpi"><span class="kpi-label">Lampu Parkiran Area C</span><b class="kpi-val warn">3 lampu mati</b></div>
+        <div class="kpi"><span class="kpi-label">Taman Depan</span><b class="kpi-val blue">Sudah dijadwal penyiraman</b></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== REPORT ===== -->
+<section id="report" class="hidden">
+  <div class="title">📊 Laporan & Summary</div>
+  <div class="sub">Rekapitulasi seluruh modul Site Services dalam periode tertentu</div>
+  <div class="panel">
+    <h3>🔎 Filter Laporan</h3>
+    <div class="grid-3">
+      <div><label>Periode Awal</label><input type="month" value="2026-08"></div>
+      <div><label>Periode Akhir</label><input type="month" value="2026-08"></div>
+      <div><label>Departemen / Area</label>
+        <select><option>Seluruh Area</option><option>Produksi</option><option>Gedung Kantor</option><option>Gudang</option></select>
+      </div>
+    </div>
+    <div style="margin-top:8px">
+      <button>Generate Laporan PDF</button>
+      <button class="secondary" style="margin-left:8px">Export ke Excel (.xlsx)</button>
+      <button class="secondary" style="margin-left:8px">Tampilkan Chart</button>
+    </div>
+    <div id="reportRes" class="result">📑 Pilih periode dan area, lalu tekan Generate untuk melihat laporan ringkasan ISSD. Fitur ini akan terhubung ke data historis pada versi production.</div>
+  </div>
+</section>
+
+<!-- ===== AI ASSISTANT ===== -->
+<section id="ai" class="hidden">
+  <div class="title">🤖 AI Assistant ISSD</div>
+  <div class="sub">Tanyakan apapun terkait kelima modul site services. MVP ini memberikan framework jawaban lokal.</div>
+  <div class="panel">
+    <h3>💬 Percakapan</h3>
+    <label>Pilih Modul Fokus (opsional)</label>
+    <select id="aiModul">
+      <option value="semua">Semua Modul (General)</option>
+      <option value="energy">Khusus Energy</option>
+      <option value="safety">Khusus Safety & HSE</option>
+      <option value="ga">Khusus General Affairs</option>
+      <option value="it">Khusus IT</option>
+      <option value="facility">Khusus Facility</option>
+    </select>
+    <label>Pertanyaan / Masukan</label>
+    <textarea id="aiQ" rows="5" placeholder="Contoh: Kenapa konsumsi listrik minggu lalu tiba-tiba naik 8% dibanding minggu sebelumnya?"></textarea>
+    <button class="success" onclick="aiAsk()">Kirim Pertanyaan</button>
+    <button class="secondary" style="margin-left:8px" onclick="document.getElementById('aiRes').textContent='';document.getElementById('aiQ').value=''">Bersihkan</button>
+    <div id="aiRes" class="result"></div>
+    <p class="small mt-8">💡 Catatan: Ini adalah MVP demo lokal. Versi production akan terhubung dengan LLM (seperti OpenAI/Claude/Gemini), RAG knowledge base perusahaan, dan database real-time tiap modul.</p>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+/* ===== Global Utilities ===== */
+const now = new Date();
+document.getElementById('today').textContent = now.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) + ' · ' + now.toLocaleTimeString('id-ID').slice(0,5);
+
+function show(id,el){
+  document.querySelectorAll('main section').forEach(x=>x.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+  if(el){document.querySelectorAll('.nav').forEach(x=>x.classList.remove('active'));el.classList.add('active');}
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ===== Energy Chart (real from Report: Electricity kWh monthly, in thousands) ===== */
+(function(){
+  const data = [
+    {lbl:'Mar',v:343},{lbl:'Apr',v:400},{lbl:'Mei',v:600},
+    {lbl:'Jun',v:370},{lbl:'Jul',v:501},{lbl:'Agu',v:555}
+  ];
+  const max = 700, box = document.getElementById('energyChart');
+  box.innerHTML = data.map(d=>{
+    const h = (d.v/max)*120+8;
+    return `<div class="bar" style="height:${h}px"><span class="bar-val">${d.v}</span><span class="bar-label">${d.lbl}</span></div>`
+  }).join('');
+})();
+
+/* ===== Energy: Tab switcher ===== */
+function eTab(i,el){
+  ['et0','et1','et2'].forEach((x,k)=>document.getElementById(x).classList.toggle('hidden',k!==i));
+  el.parentNode.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+function fTab(i,el){
+  ['ft0','ft1'].forEach((x,k)=>document.getElementById(x).classList.toggle('hidden',k!==i));
+  el.parentNode.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+function rupiah(n){return 'Rp ' + Math.round(n).toLocaleString('id-ID');}
+
+/* ===== Multi-unit cycler for Energy stat-boxes ===== */
+(function initCyclers(){
+  document.querySelectorAll('.energy-cycle').forEach((box, idx) => {
+    try {
+      const variants = JSON.parse(box.getAttribute('data-variants') || '[]');
+      if (!variants.length) return;
+      let cur = 0;
+      box._v = variants; box._i = cur;
+
+      const apply = (i, animate=true) => {
+        const v = variants[i]; const num=box.querySelector('.stat-num'), lbl=box.querySelector('.stat-lbl');
+        if (!num) return;
+        const run = () => {
+          ['green','orange','red','blue','purple'].forEach(c=>num.classList.remove(c));
+          num.textContent = v.num; lbl.textContent = v.lbl;
+          if (v.cls) num.classList.add(v.cls);
+        };
+        if (animate){ box.classList.add('swap'); setTimeout(()=>{box.classList.remove('swap'); run();},250); }
+        else run();
+      };
+      box._apply = apply;
+      // Auto-cycle each 2.5 s — desynchronized per box
+      setTimeout(() => {
+        setInterval(() => { box._i = (box._i+1) % variants.length; box._apply(box._i); }, 2500);
+      }, 300 + idx*420);
+    } catch(e){}
+  });
+})();
+function cycleStat(box){
+  if (!box || !box._apply) return;
+  box._i = ((box._i ?? 0)+1) % (box._v?.length || 1);
+  box._apply(box._i);
+}
+
+/* ===== Energy Calculators ===== */
+function calcListrik(){
+  const kwh = parseFloat(document.getElementById('ekwh').value)||0;
+  const base = parseFloat(document.getElementById('ebase').value)||0;
+  const t = parseFloat(document.getElementById('etarif').value)||0;
+  const biaya = kwh*t, selisih = base-kwh, pct = base? (selisih/base)*100 : 0;
+  const warna = pct>0?'green':(pct<0?'red':'blue');
+  document.getElementById('eRes').textContent =
+`Pemakaian listrik saat ini : ${kwh.toLocaleString('id-ID')} kWh
+Baseline / Target           : ${base.toLocaleString('id-ID')} kWh
+Tarif rata-rata            : ${rupiah(t)} / kWh
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Estimasi Biaya Bulan Ini   : ${rupiah(biaya)}
+Selisih vs Baseline        : ${selisih>=0?'-':'+'} ${Math.abs(selisih).toLocaleString('id-ID')} kWh
+Persentase Perubahan       : ${pct>=0?'▼':'▲'} ${Math.abs(pct).toFixed(2)} % → ${pct>=0?'HEMAT':'OVER'}
+Kesimpulan                 : ${pct>=3?'✅ Bagus — target hemat ≥3% tercapai.':pct>=0?'⚠️ Cukup — mendekati target hemat ≥3%.':'❌ Melebihi baseline. Segera lakukan audit energi!'}`;
+}
+function calcGas(){
+  const g = parseFloat(document.getElementById('gas1').value)||0;
+  const h = parseFloat(document.getElementById('gas2').value)||0;
+  const k = parseFloat(document.getElementById('gas3').value)||0;
+  const biaya = g*h, energi = g*k, mwh = energi/860;
+  document.getElementById('eRes2').textContent =
+`Pemakaian gas         : ${g.toLocaleString('id-ID')} Nm³
+Kalor jenis           : ${k} kcal/Nm³
+Harga satuan          : ${rupiah(h)}/Nm³
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Total Energi (termal) : ${energi.toLocaleString('id-ID')} kcal
+Energi ekuivalen      : ${mwh.toFixed(2)} MWh
+Estimasi Biaya        : ${rupiah(biaya)}
+Rekomendasi           : Jika perlu konversi ke ton ekuivalen batubara (TEC) → ${(energi/7000).toFixed(2)} ton.`;
+}
+function calcEff(){
+  const a = parseFloat(document.getElementById('eff1').value)||1;
+  const b = parseFloat(document.getElementById('eff2').value)||0;
+  const u = parseFloat(document.getElementById('eff3').value)||1;
+  const p = ((a-b)/a)*100;
+  const satuan = ((a-b)*u);
+  document.getElementById('eRes3').textContent =
+`Sebelum Perbaikan  : ${a} satuan energi / unit
+Sesudah Perbaikan  : ${b} satuan energi / unit
+Volume Aktivitas   : ${u.toLocaleString('id-ID')} unit
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Efisiensi Per Unit : ${p.toFixed(2)} %
+Total Penghematan  : ${satuan.toLocaleString('id-ID')} satuan energi
+Kesimpulan         : ${p>=10?'✅ SANGAT BAGUS — peningkatan signifikan.':p>=5?'👍 BAIK — penghematan nyata terukur.':p>0?'📈 ADEM — ada perbaikan, tapi masih bisa ditingkatkan.':'⚠️ BELUM ADA PENINGKATAN, cek ulang parameter.'}`;
+}
+
+/* ===== Safety: JSA ===== */
+function jsa(){
+  const job = document.getElementById('sJob').value;
+  const desc = document.getElementById('sDesc').value.trim()||'(tidak diisi)';
+  const org = parseInt(document.getElementById('sPekerja').value)||1;
+  const alat = document.getElementById('sAlat').value.trim()||'(tidak diisi)';
+  const DB = {
+    hotwork: ['Bahaya kebakaran & ledakan akibat percikan api','Panas radiasi & UV (radiasi sinar las)','Kebocoran gas mudah terbakar di sekitar','Asap & fumes pernapasan','Luka bakar dan cedera mata'],
+    workheight:['Terjatuh dari ketinggian (fatal)','Jatuhnya tools / material ke bawah','Kerusakan scaffolding / AWP','Angin kencang & cuaca buruk','Kelelahan pekerja'],
+    confined:['Kekurangan oksigen (asfiksia)','Gas beracun / mudah terbakar','Tenggelam / aliran cairan tiba-tiba','Terjebak / susah evakuasi','Panas berlebih'],
+    electrical:['Kontak langsung tegangan tinggi — sengatan listrik (fatal)','Arc flash & busur api','Korsleting & kebakaran panel','Kabel terkelupas / isolasi rusak','Gangguan pasokan / mati mendadak'],
+    lifting:['Tali / sling putus (overload / aus)','Crane / hoist roboh','Jatuhnya beban ke area kerja','Tabrakan dengan struktur','Operator tidak kompeten'],
+    lain:['Identifikasi bahaya spesifik harus diisi secara rinci','PPE sesuai SOP','Toolbox meeting sebelum mulai','Checklist peralatan']
+  };
+  const bahaya = DB[job]||DB.lain;
+  let level = 'MEDIUM';
+  if(['hotwork','workheight','confined','electrical','lifting'].includes(job)) level = 'HIGH';
+  document.getElementById('sRes').textContent =
+`⚠️ JOB SAFETY ANALYSIS (JSA) — AUTO GENERATED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Jenis Pekerjaan : ${document.getElementById('sJob').selectedOptions[0].text}
+Level Risiko    : 🔴 ${level}
+Lokasi/Kondisi  : ${desc}
+Pekerja         : ${org} orang
+Peralatan       : ${alat}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💡 IDENTIFIKASI BAHAYA UTAMA :
+${bahaya.map((b,i)=>`  ${i+1}. ${b}`).join('\n')}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛡 CONTROL MEASURES (HIERARKI KONTROL) :
+  1. ELIMINASI   : Jadwalkan pekerjaan saat area low-traffic / shutdown jika memungkinkan
+  2. SUBSTITUSI  : Gunakan alat kerja yang lebih aman (misal: non-sparking tool)
+  3. ENGINEERING : Pasang barrier, rambu larangan, fire blanket, ventilasi mekanis, dll
+  4. ADMINISTRASI:
+     • Terbitkan Izin Kerja (Hot Work / Height / Confined / Electrical Permit)
+     • Toolbox Meeting sebelum memulai (tanda tangan semua pekerja)
+     • Tetapkan personil pengawas (Supervisor / Fire Watcher)
+     • Validasi checklist pre-use peralatan
+  5. PPE WAJIB  :
+     • ${job==='hotwork'?'APD las (helm las, apron kulit, sarung tangan las), sepatu safety, kacamata goggle':''}
+     • ${job==='workheight'?'Full body harness + lanyard, sepatu safety anti slip, helm':''}
+     • ${job==='confined'?'Gas detector, breathing apparatus (SCBA), rescue tripod, komunikasi 2 arah':''}
+     • ${job==='electrical'?'Sarung tangan isolasi, sepatu isolasi, matras karet, Lock Out Tag Out (LOTO)':''}
+     • ${job==='lifting'?'Sling & shackle sesuai SWL, rambu eksklusif, signaler bersertifikat':''}
+     • Helm proyek, sepatu safety IDR 200J, rompi safety, kacamata safety (umum)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 EMERGENCY RESPONSE :
+  • P3K terdekat, Evakuasi titik kumpul, Pemadam Api terdekat,
+  • Nama PIC Safety : ... (isi sesuai site)
+  • Nomor Darurat : Security / Clinic / Ambulans / Damkar
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SIGN-OFF:
+  [ ] Pekerja 1    [ ] Pekerja 2    [ ] ${org>2?'Pekerja N':'Pengawas'}   [ ] Supervisor
+  [ ] HSE Officer / Safety Representative ✅ REQUIRED`;
+}
+
+/* ===== GA: Peminjaman Mobil ===== */
+function pinjamMobil(){
+  const nama = document.getElementById('gNama').value.trim();
+  const tgl = document.getElementById('gTgl').value;
+  const tujuan = document.getElementById('gTujuan').value.trim();
+  const mobil = document.getElementById('gMobil').value;
+  const supir = document.getElementById('gSupir').value;
+  const km = parseFloat(document.getElementById('gKm').value)||0;
+  if(!nama||!tgl||!tujuan){document.getElementById('gRes').textContent='❌ Mohon lengkapi: Nama, Tanggal/Jam, dan Tujuan.';return;}
+  const no = 'BK-'+String(now.getFullYear()).slice(2)+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+'-'+String(Math.floor(Math.random()*900+100));
+  const biayaBBM = km * 4800;
+  document.getElementById('gRes').textContent =
+`✅ PENGAJUAN PEMINJAMAN KENDARAAN DITERIMA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+No. Booking     : ${no}
+Peminjam        : ${nama}
+Waktu Pakai     : ${new Date(tgl).toLocaleString('id-ID')}
+Tujuan          : ${tujuan}
+Kendaraan       : ${mobil}
+Supir           : ${supir}
+Estimasi Km     : ${km} km
+Estimasi BBM    : ${rupiah(biayaBBM)} (asumsi 12 km/liter, Rp 57.600/L)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Status          : 🔵 MENUNGGU APPROVAL KABAG GA
+Lampiran        : Form checklist pre-trip (dilampirkan saat serah kunci)
+Instruksi       : Tanda terima serah kunci di resepsionis GA 1 jam sebelum keberangkatan.`;
+}
+
+/* ===== IT: Troubleshooting ===== */
+function itTrouble(){
+  const c = document.getElementById('iCat').value;
+  const p = document.getElementById('iProb').value.trim()||'(deskripsi gejala tidak diisi)';
+  const h = document.getElementById('iHost').value.trim();
+  const guide = {
+    net: [
+      '1. Pastikan kabel LAN terpasang baik (jika wired) — cek lampu indikator NIC / switch menyala hijau',
+      '2. Cek ipconfig / all → dapat IP valid (bukan 169.254.x.x)?',
+      '3. Ping gateway (route print), ping 8.8.8.8, ping intranet server',
+      '4. nslookup domain perusahaan → apakah DNS resolve?',
+      '5. Ganti port switch / kabel, cek di NAC atau VLAN assignment',
+      '6. Jika masih gagal → eskalasi Network Team + lampirkan hasil ipconfig & ping'
+    ],
+    email:[
+      '1. Pastikan Internet normal (buka web) dan Out-of-Office tidak blocking',
+      '2. Cek status akun di AD: tidak expired, tidak terkunci, password benar',
+      '3. Cek Outlook Profile → buat profile baru (Control Panel → Mail)',
+      '4. Cek OWA via browser — jika OWA berarti masalah client Outlook',
+      '5. Repait Office, pastikan build Outlook up-to-date',
+      '6. Cek ukuran OST, Archive email jika > 50 GB'
+    ],
+    wifi:[
+      '1. Lupakan SSID → reconnect + input ulang password (domain credential)',
+      '2. Cek Channel & interferensi 2.4 GHz vs 5 GHz (coba 5 GHz)',
+      '3. ipconfig /flushdns, netsh winsock reset → restart PC',
+      '4. Update driver wireless adapter (Intel AX200/201 sangat umum)',
+      '5. Ping gateway WiFi, cek Controller WLC status AP',
+      '6. Jika hanya AP tertentu → reset AP + cek DHCP scope'
+    ],
+    print:[
+      '1. Pastikan printer Ready, kertas & toner tidak kosong',
+      '2. Ping IP printer → koneksi normal?',
+      '3. Hapus job macet di Print Queue (services.msc → restart Print Spooler)',
+      '4. Remove driver → reinstall dengan driver PCL6/PS terbaru',
+      '5. Coba print dari aplikasi lain (Notepad) untuk bedakan masalah aplikasi vs driver',
+      '6. Jika error konstan (error 50/79) → catat kode error + log printer untuk vendor'
+    ],
+    vpn:[
+      '1. Pastikan Internet stabil (non-kantor ISP)',
+      '2. Cek username + password + 2FA / OTP (jika anyconnect)',
+      '3. Update Cisco AnyConnect / FortiClient ke build terbaru',
+      '4. Masuk Safe Mode with networking (isolasi konflik software)',
+      '5. Coba hotspot HP sebagai network uji (rule out ISP blokir)',
+      '6. Jika semua gagal → kirim log Event Viewer Applications & Services'
+    ],
+    slow:[
+      '1. Task Manager → CPU / RAM / Disk 100%? catat prosesnya',
+      '2. Disk Cleanup + DISM /Online /Cleanup-Image + sfc /scannow',
+      '3. Cek startup app (taskmgr startup) disable yang tidak perlu',
+      '4. Scan Malware dengan Windows Defender Offline Scan',
+      '5. Periksa HD Tune / CrystalDiskInfo kesehatan SSD/HDD',
+      '6. Upgrade RAM / SSD jika masih HDD < 16GB'
+    ],
+    pw:[
+      '1. Hubungi helpdesk / IT Admin + verifikasi data identitas',
+      '2. Reset via Self Service Password Reset (SSPR) portal (jika ada)',
+      '3. Admin reset via ADUC → centang User must change password next logon',
+      '4. Jika terkunci → Unlock Account di tab Account AD',
+      '5. Tunggu replikasi DC (15 menit jika multi site), lalu coba login',
+      '6. Pastikan Credential Manager (control keymgr.dll) dibersihkan jika disimpan pw lama'
+    ]
+  };
+  document.getElementById('iRes').textContent =
+`🔍 DIAGNOSA TROUBLESHOOTING ISSD IT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Host/Perangkat  : ${h}
+Kategori Masalah: ${document.getElementById('iCat').selectedOptions[0].text}
+Deskripsi User  : ${p}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📝 STEP-BY-STEP TROUBLESHOOTING REKOMENDASI :
+${(guide[c]||guide.slow).join('\n')}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎓 Jika langkah di atas TIDAK menyelesaikan :
+  • Buat Tiket Helpdesk via portal ISSD + lampirkan:
+    1. Screenshot error message
+    2. Hasil langkah 1-5 (screenshot ipconfig, ping, dll)
+    3. Waktu kejadian + nama user + hostname
+  • Estimasi SLA : Priority Low ≤ 24h | Medium ≤ 8h | High ≤ 2h | Critical ≤ 30m`;
+}
+
+/* ===== Facility: AC Calc ===== */
+function calcAC(){
+  const p=+document.getElementById('fP').value,l=+document.getElementById('fL').value,t=+document.getElementById('fT').value;
+  const o=+document.getElementById('fO').value,eq=document.getElementById('fEquip').value,s=document.getElementById('fSun').value;
+  const luas = p*l;
+  let btusq = 500;
+  if(s.startsWith('Normal')) btusq = 600;
+  if(s.startsWith('Terbuka')) btusq = 700;
+  let base = luas*btusq;
+  base += o*500;
+  const eqFactor = {ringan:1.0,sedang:1.20,berat:1.40}[eq];
+  base *= eqFactor;
+  const pk = (base/9000);
+  const pkRekom = Math.ceil(pk*2)/2;
+  document.getElementById('fRes').textContent =
+`❄️ PERHITUNGAN KEBUTUHAN AC
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Ukuran Ruangan       : ${p} x ${l} x ${t} m → Luas ${luas.toFixed(1)} m², Volume ${(p*l*t).toFixed(1)} m³
+Jumlah Orang         : ${o} orang
+Kepadatan Peralatan  : ${eq} (faktor ×${eqFactor})
+Paparan Sinar Matahari : ${s} (BTU/m² = ${btusq})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Kebutuhan Kalor Dasar : ${base.toLocaleString('id-ID',{maximumFractionDigits:0})} BTU / jam
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚙️ REKOMENDASI KAPASITAS :
+  • Perhitungan exact  : ${pk.toFixed(2)} PK
+  • Unit komersial    : ${pkRekom.toFixed(1)} PK (dibulatkan ke atas 0.5 PK)
+  • Konfigurasi terbaik :
+       → ${pkRekom<=1.5?'1 unit AC Split 2 PK (cukup oversizing tipis untuk beban puncak + lebih awet)':
+         pkRekom<=2.5?'2 unit AC Split 1.5 PK (distribusi dingin lebih merata, hemat untuk beban sebagian)':
+         pkRekom<=4?'2 unit AC Split 2.5 PK atau 1 AC Cassette 5 PK':
+         pkRekom<=6?'3 unit AC Cassette 2.5 PK atau 1 AC Central AHU 7.5 PK':
+         `${Math.ceil(pkRekom/3)} unit AC Cassette 3 PK (distribusi ruang luas)`}
+  ⚠️ Catatan: Perhitungan ini rule of thumb. Untuk ruang server / lab, sebaiknya gandakan kapasitas dan gunakan AC Precision (Inrow / Rack-based).`;
+}
+function submitWO(){
+  const loc = document.getElementById('fLoc').value.trim();
+  const masalah = document.getElementById('fMasalah').value;
+  const detail = document.getElementById('fWO').value.trim();
+  const pelapor = document.getElementById('fPelapor').value.trim();
+  if(!loc||!detail){document.getElementById('fRes2').textContent='❌ Mohon isi Lokasi dan Detail Masalah.';return;}
+  const wo = 'WO-2609-'+String(Math.floor(Math.random()*9000+1000));
+  document.getElementById('fRes2').textContent =
+`✅ WORK ORDER FASILITAS DIBUAT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+No. Work Order    : ${wo}
+Lokasi            : ${loc}
+Jenis Masalah     : ${masalah}
+Detail Masalah    : ${detail}
+Pelapor           : ${pelapor||'(anonim)'}
+Urgensi           : ${document.getElementById('fUrgensi').value}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Status            : 🟠 ASSIGNED — Teknisi ${['Dody','Rahmat','Tono'][Math.floor(Math.random()*3)]}
+Estimasi Datang   : ${document.getElementById('fUrgensi').value.includes('Tinggi')?'< 60 menit':(document.getElementById('fUrgensi').value.includes('Sedang')?'< 8 jam':'< 2 hari')}
+Feedback          : Buka menu ini lagi → ${wo} untuk menutup WO + beri rating setelah selesai.`;
+}
+
+/* ===== AI Assistant (Framework answer) ===== */
+function aiAsk(){
+  const m = document.getElementById('aiModul').value;
+  const q = document.getElementById('aiQ').value.trim();
+  if(!q){document.getElementById('aiRes').textContent='Silakan tuliskan pertanyaan Anda terlebih dahulu.';return;}
+  const modulTitle = {semua:'Umum/Seluruh Modul',energy:'Energy',safety:'Safety & HSE',ga:'General Affairs',it:'IT Infrastructure',facility:'Facility'}[m];
+  document.getElementById('aiRes').textContent =
+`🤖 ISSD AI Assistant [${modulTitle}]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❓ PERTANYAAN :
+${q}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📌 FRAMEWORK ANALISIS (versi MVP — local rule engine) :
+
+1️⃣ KUMPULKAN DATA RELEVAN
+   → Tarik data historis 3-6 bulan terakhir dari modul ${modulTitle}
+   → Identifikasi baseline / target SOP & KPI
+   → Cek data eksternal (cuaca, jumlah shift, event, jadwal libur)
+
+2️⃣ BANDINGKAN & DETEKSI ANOMALI
+   → Trend time-series: mingguan, bulanan, harian, jam-jam puncak
+   → Korelasi antar variabel (misal: energi vs output produksi vs cuaca)
+   → Bandingkan dengan baseline & alarm threshold SOP
+
+3️⃣ IDENTIFIKASI PENYEBAB (ROOT CAUSE ANALYSIS)
+   → Diagram Fishbone / 5M: Man, Machine, Material, Method, Mother Nature
+   → Daftar 3-5 kemungkinan penyebab terbesar + skor probabilitas
+
+4️⃣ EVALUASI RISIKO & DAMPAK
+   → Safety: Apakah membahayakan orang?
+   → Financial: Berapa kerugian / biaya jika dibiarkan?
+   → Operasional: Apakah mengganggu produktivitas?
+   → Compliance: Apakah melanggar SOP / regulasi?
+
+5️⃣ REKOMENDASI TINDAKAN (PRIORITAS)
+   🚨 SHORT-TERM (segera, ≤ 24 jam):
+   • ... tindakan koreksi langsung berdasarkan penyebab terbesar
+   📅 MID-TERM (1-2 minggu):
+   • ... perbaikan preventif / SOP
+   🎯 LONG-TERM (1-3 bulan):
+   • ... improvement, otomasi, investasi tool
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ INFORMASI VERSI MVP :
+Jawaban di atas adalah FRAMEWORK GENERIK. Pada sistem production akan:
+✅ Terhubung ke LLM (GPT-4o / Claude / Gemini)
+✅ Mengambil data real-time dari database tiap modul
+✅ Menggunakan RAG (Retrieval Augmented Generation) dari SOP, SOP Perusahaan, dan dokumen internal
+✅ Menghasilkan jawaban spesifik berdasar angka dan data riil site Anda
+
+Jika ingin melanjutkan ke versi production dengan integrasi LLM + DB, silakan aktifkan modul koneksi database dan API Key.`;
+}
+
+/* Auto-run some calculators on load */
+calcListrik();
+</script>
+</body>
+</html>
