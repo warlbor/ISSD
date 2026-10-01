@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ISSD — Perbandingan Gaya UI</title>
+<style>
+  :root { --max: 1720px; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 32px 24px 64px;
+  }
+  .page-title { text-align:center; margin-bottom: 6px; font-size: 26px; font-weight:700; }
+  .page-sub  { text-align:center; color:#94a3b8; margin-bottom: 32px; font-size:14px; }
+  .variants {
+    display:grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 28px; max-width: var(--max); margin: 0 auto; align-items:start;
+  }
+  .variant-label {
+    display:flex; align-items:center; gap:10px;
+    font-weight:700; font-size:15px; margin-bottom:12px; color:#e2e8f0;
+  }
+  .variant-label .tag {
+    font-size:11px; font-weight:600; padding:3px 10px; border-radius:999px;
+    background:#1e293b; color:#94a3b8; border:1px solid #334155;
+  }
+  .frame { border-radius:16px; overflow:hidden; }
+
+  /* ============ konten sampel (sama utk semua varian) ============ */
+  .demo-header { display:flex; align-items:center; gap:12px; padding:12px 18px; }
+  .demo-logo { font-weight:800; font-size:15px; letter-spacing:.3px; }
+  .demo-date, .demo-live, .demo-chip {
+    font-size:12px; padding:5px 12px; border-radius:999px; display:inline-flex; align-items:center; gap:6px;
+  }
+  .demo-live .dot { width:7px; height:7px; border-radius:50%; background:#22c55e; }
+  .demo-avatar {
+    width:26px; height:26px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:700; background:#3b82f6; color:#fff;
+  }
+  .demo-body { display:flex; }
+  .demo-side { width:150px; flex-shrink:0; padding:16px 10px; font-size:13px; }
+  .demo-side .grp { font-size:10px; letter-spacing:1.2px; font-weight:700; margin:0 0 8px 10px; }
+  .demo-side a { display:block; padding:8px 10px; border-radius:9px; text-decoration:none; margin-bottom:2px; }
+  .demo-main { flex:1; padding:18px; }
+  .demo-main h2 { font-size:18px; margin-bottom:4px; }
+  .demo-main .sub { font-size:12px; margin-bottom:14px; }
+  .kpis { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:14px; }
+  .kpi { padding:14px; border-radius:14px; }
+  .kpi .k { font-size:11px; margin-bottom:6px; }
+  .kpi .v { font-size:20px; font-weight:700; }
+  .kpi .d { font-size:11px; margin-top:4px; }
+  .btns { display:flex; gap:10px; margin-bottom:14px; }
+  .btn { font-size:13px; font-weight:600; padding:9px 18px; border-radius:11px; border:none; cursor:pointer; }
+  table.demo-t { width:100%; border-collapse:collapse; font-size:12.5px; }
+  table.demo-t th { text-align:left; font-size:11px; padding:8px 10px; }
+  table.demo-t td { padding:8px 10px; }
+
+  /* ================= VARIAN 1 — SEKARANG (navy solid) ================= */
+  .v-cur .frame { background:#0b1f3a; border:1px solid #1c3a5f; }
+  .v-cur .demo-header { background:#081a30; border-bottom:1px solid #1c3a5f; }
+  .v-cur .demo-logo { color:#fff; }
+  .v-cur .demo-date { background:rgba(255,255,255,.07); color:#cbd5e1; }
+  .v-cur .demo-live { background:rgba(34,197,94,.12); color:#4ade80; }
+  .v-cur .demo-chip { background:rgba(255,255,255,.07); color:#fff; }
+  .v-cur .demo-side { background:#081a30; border-right:1px solid #1c3a5f; }
+  .v-cur .demo-side .grp { color:#64748b; }
+  .v-cur .demo-side a { color:#94a3b8; }
+  .v-cur .demo-side a.on { background:rgba(59,130,246,.15); color:#60a5fa; font-weight:600; }
+  .v-cur .demo-main h2 { color:#fff; }
+  .v-cur .demo-main .sub { color:#64748b; }
+  .v-cur .kpi { background:#0e2a4a; border:1px solid #1c3a5f; }
+  .v-cur .kpi .k, .v-cur .kpi .d { color:#64748b; }
+  .v-cur .kpi .d.up { color:#4ade80; }
+  .v-cur .kpi .v { color:#fff; }
+  .v-cur .btn-a { background:linear-gradient(135deg,#10b981,#0d9488); color:#fff; }
+  .v-cur .btn-b { background:transparent; border:1px solid #1c3a5f; color:#94a3b8; }
+  .v-cur table.demo-t th { color:#64748b; border-bottom:1px solid #1c3a5f; }
+  .v-cur table.demo-t td { color:#cbd5e1; border-bottom:1px solid #12294a; }
+  .v-cur table.demo-t tr:last-child td { border-bottom:none; }
+
+  /* ================= VARIAN 2 — GLASSMORPHISM ================= */
+  .v-glass .frame {
+    background: linear-gradient(135deg,#1e1b4b 0%,#0f172a 50%,#134e4a 100%);
+    border:1px solid rgba(255,255,255,.14);
+    box-shadow: 0 24px 60px rgba(0,0,0,.5);
+  }
+  .v-glass .demo-header {
+    background: rgba(255,255,255,.06);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom:1px solid rgba(255,255,255,.1);
+  }
+  .v-glass .demo-logo {
+    background: linear-gradient(90deg,#a78bfa,#38bdf8);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .v-glass .demo-date, .v-glass .demo-chip {
+    background: rgba(255,255,255,.09);
+    border:1px solid rgba(255,255,255,.16);
+    backdrop-filter: blur(8px); color:#e2e8f0;
+  }
+  .v-glass .demo-live { background:rgba(34,197,94,.14); color:#6ee7a0; border:1px solid rgba(34,197,94,.3); }
+  .v-glass .demo-avatar { background: linear-gradient(135deg,#8b5cf6,#0ea5e9); }
+  .v-glass .demo-side {
+    background: rgba(255,255,255,.04);
+    border-right:1px solid rgba(255,255,255,.08);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  }
+  .v-glass .demo-side .grp { color:rgba(226,232,240,.5); }
+  .v-glass .demo-side a { color:rgba(226,232,240,.75); }
+  .v-glass .demo-side a.on {
+    background: rgba(255,255,255,.1); color:#fff;
+    border:1px solid rgba(255,255,255,.14);
+  }
+  .v-glass .demo-main h2 {
+    background: linear-gradient(90deg,#fff,#c7d2fe);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .v-glass .demo-main .sub { color:rgba(226,232,240,.55); }
+  .v-glass .kpi {
+    background: rgba(255,255,255,.07);
+    border:1px solid rgba(255,255,255,.14);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  }
+  .v-glass .kpi .k, .v-glass .kpi .d { color:rgba(226,232,240,.6); }
+  .v-glass .kpi .d.up { color:#6ee7a0; }
+  .v-glass .btn-a {
+    background: rgba(255,255,255,.14); color:#fff;
+    border:1px solid rgba(255,255,255,.22);
+    backdrop-filter: blur(8px); box-shadow: 0 4px 16px rgba(0,0,0,.2);
+  }
+  .v-glass .btn-b { background:transparent; border:1px solid rgba(255,255,255,.18); color:rgba(226,232,240,.8); }
+  .v-glass table.demo-t th { color:rgba(226,232,240,.5); border-bottom:1px solid rgba(255,255,255,.12); }
+  .v-glass table.demo-t td { color:rgba(226,232,240,.9); border-bottom:1px solid rgba(255,255,255,.06); }
+  .v-glass table.demo-t tr:last-child td { border-bottom:none; }
+
+  /* ================= VARIAN 3 — SHADCN-STYLE ================= */
+  .v-shad .frame {
+    background:#09090b; border:1px solid #27272a;
+    box-shadow: 0 2px 4px rgba(0,0,0,.4);
+  }
+  .v-shad .demo-header { background:#09090b; border-bottom:1px solid #27272a; }
+  .v-shad .demo-logo { color:#fafafa; }
+  .v-shad .demo-date, .v-shad .demo-chip {
+    background:transparent; border:1px solid #27272a; color:#a1a1aa; border-radius:8px;
+  }
+  .v-shad .demo-live { background:#052e16; color:#4ade80; border-radius:8px; border:none; }
+  .v-shad .demo-avatar { background:#fafafa; color:#09090b; border-radius:8px; }
+  .v-shad .demo-side { background:#09090b; border-right:1px solid #27272a; }
+  .v-shad .demo-side .grp { color:#52525b; }
+  .v-shad .demo-side a { color:#a1a1aa; border-radius:8px; }
+  .v-shad .demo-side a.on { background:#27272a; color:#fafafa; }
+  .v-shad .demo-main h2 { color:#fafafa; letter-spacing:-.3px; }
+  .v-shad .demo-main .sub { color:#71717a; }
+  .v-shad .kpi {
+    background:#0c0c0e; border:1px solid #27272a; border-radius:10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.5);
+  }
+  .v-shad .kpi .k, .v-shad .kpi .d { color:#71717a; }
+  .v-shad .kpi .d.up { color:#4ade80; }
+  .v-shad .btn-a { background:#fafafa; color:#09090b; border-radius:8px; }
+  .v-shad .btn-b { background:transparent; border:1px solid #27272a; color:#d4d4d8; border-radius:8px; }
+  .v-shad table.demo-t th { color:#71717a; border-bottom:1px solid #27272a; }
+  .v-shad table.demo-t td { color:#d4d4d8; border-bottom:1px solid #1c1c1f; }
+  .v-shad table.demo-t tr:last-child td { border-bottom:none; }
+</style>
+</head>
+<body>
+  <h1 class="page-title">ISSD — Perbandingan Gaya UI</h1>
+  <p class="page-sub">Konten sampel yang sama, tiga sistem desain berbeda. Tidak ada file produksi yang diubah.</p>
+
+  <div class="variants">
+
+    <!-- ============ 1. SEKARANG ============ -->
+    <div class="v-cur">
+      <div class="variant-label">1 · Gaya Sekarang <span class="tag">navy solid</span></div>
+      <div class="frame">
+        <div class="demo-header">
+          <span class="demo-logo">⚡ ISSD</span>
+          <span style="flex:1"></span>
+          <span class="demo-date">📅 Rabu, 30 Sep 2026</span>
+          <span class="demo-live"><span class="dot"></span>LIVE · SQLite</span>
+          <span class="demo-chip"><span class="demo-avatar">A</span>admin</span>
+        </div>
+        <div class="demo-body">
+          <div class="demo-side">
+            <div class="grp">MENU UTAMA</div>
+            <a href="#" class="on">Energy Management</a>
+            <a href="#">Safety &amp; HSE</a>
+            <a href="#">General Affairs</a>
+          </div>
+          <div class="demo-main">
+            <h2>Energy Management</h2>
+            <p class="sub">Ringkasan pemakaian energi bulan ini</p>
+            <div class="kpis">
+              <div class="kpi"><div class="k">Listrik</div><div class="v">128.450</div><div class="d up">▲ 4,2% vs bulan lalu</div></div>
+              <div class="kpi"><div class="k">Air</div><div class="v">3.456 m³</div><div class="d up">▲ 1,1% vs bulan lalu</div></div>
+              <div class="kpi"><div class="k">Gas (MMbtu)</div><div class="v">3.281</div><div class="d">▼ 2,8% vs bulan lalu</div></div>
+            </div>
+            <div class="btns"><button class="btn btn-a">⬆ Import Excel</button><button class="btn btn-b">Periode</button></div>
+            <table class="demo-t">
+              <tr><th>WO</th><th>Lokasi</th><th>Status</th></tr>
+              <tr><td>WO-0042</td><td>Chiller Room 5D1</td><td>Open</td></tr>
+              <tr><td>WO-0041</td><td>Boiler House</td><td>In Progress</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 2. GLASSMORPHISM ============ -->
+    <div class="v-glass">
+      <div class="variant-label">2 · Glassmorphism <span class="tag">kaca buram + gradien</span></div>
+      <div class="frame">
+        <div class="demo-header">
+          <span class="demo-logo">⚡ ISSD</span>
+          <span style="flex:1"></span>
+          <span class="demo-date">📅 Rabu, 30 Sep 2026</span>
+          <span class="demo-live"><span class="dot"></span>LIVE · SQLite</span>
+          <span class="demo-chip"><span class="demo-avatar">A</span>admin</span>
+        </div>
+        <div class="demo-body">
+          <div class="demo-side">
+            <div class="grp">MENU UTAMA</div>
+            <a href="#" class="on">Energy Management</a>
+            <a href="#">Safety &amp; HSE</a>
+            <a href="#">General Affairs</a>
+          </div>
+          <div class="demo-main">
+            <h2>Energy Management</h2>
+            <p class="sub">Ringkasan pemakaian energi bulan ini</p>
+            <div class="kpis">
+              <div class="kpi"><div class="k">Listrik</div><div class="v">128.450</div><div class="d up">▲ 4,2% vs bulan lalu</div></div>
+              <div class="kpi"><div class="k">Air</div><div class="v">3.456 m³</div><div class="d up">▲ 1,1% vs bulan lalu</div></div>
+              <div class="kpi"><div class="k">Gas (MMbtu)</div><div class="v">3.281</div><div class="d">▼ 2,8% vs bulan lalu</div></div>
+            </div>
+            <div class="btns"><button class="btn btn-a">⬆ Import Excel</button><button class="btn btn-b">Periode</button></div>
+            <table class="demo-t">
+              <tr><th>WO</th><th>Lokasi</th><th>Status</th></tr>
+              <tr><td>WO-0042</td><td>Chiller Room 5D1</td><td>Open</td></tr>
+              <tr><td>WO-0041</td><td>Boiler House</td><td>In Progress</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 3. SHADCN-STYLE ============ -->
+    <div class="v-shad">
+      <div class="variant-label">3 · Shadcn-style <span class="tag">zinc minimalis</span></div>
+      <div class="frame">
+        <div class="demo-header">
+          <span class="demo-logo">⚡ ISSD</span>
+          <span style="flex:1"></span>
+          <span class="demo-date">Rabu, 30 Sep 2026</span>
+          <span class="demo-live"><span class="dot"></span>LIVE · SQLite</span>
+          <span class="demo-chip"><span class="demo-avatar">A</span>admin</span>
+        </div>
+        <div class="demo-body">
+          <div class="demo-side">
+            <div class="grp">MENU UTAMA</div>
+            <a href="#" class="on">Energy Management</a>
+            <a href="#">Safety &amp; HSE</a>
+            <a href="#">General Affairs</a>
+          </div>
+          <div class="demo-main">
+            <h2>Energy Management</h2>
+            <p class="sub">Ringkasan pemakaian energi bulan ini</p>
+            <div class="kpis">
+              <div class="kpi"><div class="k">Listrik</div><div class="v">128.450</div><div class="d up">▲ 4,2% vs bulan lalu</div></div>
+              <div class="kpi"><div class="k">Air</div><div class="v">3.456 m³</div><div class="d up">▲ 1,1% vs bulan lalu</div></div>
+              <div class="kpi"><div class="k">Gas (MMbtu)</div><div class="v">3.281</div><div class="d">▼ 2,8% vs bulan lalu</div></div>
+            </div>
+            <div class="btns"><button class="btn btn-a">⬆ Import Excel</button><button class="btn btn-b">Periode</button></div>
+            <table class="demo-t">
+              <tr><th>WO</th><th>Lokasi</th><th>Status</th></tr>
+              <tr><td>WO-0042</td><td>Chiller Room 5D1</td><td>Open</td></tr>
+              <tr><td>WO-0041</td><td>Boiler House</td><td>In Progress</td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
