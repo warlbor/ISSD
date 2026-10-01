@@ -3,6 +3,7 @@ import { api } from '../api.js';
 import { $, renderInto, renderStats, table, row, html, esc, toast, sevClass } from '../ui.js';
 import { actionsCell, statusPicker } from '../crud.js';
 import { itGuide } from '../calc.js';
+import { t } from '../i18n.js';
 
 export const id = 'it';
 
@@ -11,10 +12,10 @@ export async function load() {
   const kpis = d.kpis || {};
 
   renderStats('itStats', [
-    { num: kpis.net_uptime?.value || 'N/A', lbl: 'Uptime Jaringan', color: 'green' },
-    { num: String((d.tickets || []).filter((t) => t.status !== 'Solved' && t.status !== 'Closed').length), lbl: 'Tiket Open' },
-    { num: kpis.devices?.value || 'N/A', lbl: 'Perangkat Aktif', color: 'blue' },
-    { num: kpis.sec_alerts?.value || 'N/A', lbl: 'Alert Keamanan', color: 'orange' }
+    { num: kpis.net_uptime?.value || 'N/A', lbl: t('it.kpi.uptime'), color: 'green' },
+    { num: String((d.tickets || []).filter((ticket) => ticket.status !== 'Solved' && ticket.status !== 'Closed').length), lbl: t('it.kpi.open') },
+    { num: kpis.devices?.value || 'N/A', lbl: t('it.kpi.devices'), color: 'blue' },
+    { num: kpis.sec_alerts?.value || 'N/A', lbl: t('it.kpi.sec'), color: 'orange' }
   ]);
 
   renderInto(
@@ -25,18 +26,18 @@ export async function load() {
           <span class="kpi-label">${esc(i.label)}</span>
           <b class="kpi-val ${sevClass(i.severity)}">${esc(i.value)}</b>
         </div>`
-      ).join('') || '<p class="small">Belum ada data infrastruktur.</p>'
+      ).join('') || `<p class="small">${esc(t('it.noInfra'))}</p>`
     )
   );
 
   renderInto(
     'ticketTable',
     table(
-      ['ID', 'User', 'Masalah', 'Status', 'Aksi'],
-      (d.tickets || []).map((t) =>
-        row([t.ticket_no, t.user_name, t.issue, statusPicker('it_tickets', t), actionsCell('it_tickets', t)]).__html
+      [t('it.col.id'), t('it.col.user'), t('it.col.issue'), t('home.col.status'), t('energy.col.action')],
+      (d.tickets || []).map((ticket) =>
+        row([ticket.ticket_no, ticket.user_name, ticket.issue, statusPicker('it_tickets', ticket), actionsCell('it_tickets', ticket)]).__html
       ),
-      { empty: 'Belum ada tiket.' }
+      { empty: t('it.noTickets') }
     )
   );
 }
@@ -48,13 +49,13 @@ export function mount() {
   $('btnTicket').onclick = async () => {
     try {
       const row = await api.post('/api/it/tickets', {
-        user_name: $('iUser').value || 'Anonim',
+        user_name: $('iUser').value || t('it.anonymous'),
         issue: $('iProb').value || $('iCat').selectedOptions[0].text,
         host: $('iHost').value,
         category: $('iCat').value
       });
-      $('iRes').textContent = `✅ Tiket ${row.ticket_no} dibuat dan disimpan.`;
-      toast('Tiket IT tersimpan');
+      $('iRes').textContent = t('it.ticketSaved', { no: row.ticket_no });
+      toast(t('it.toastSaved'));
       load();
     } catch (e) {
       toast(e.message);
@@ -71,7 +72,7 @@ async function refreshCaptcha() {
     $('captchaQuestion').textContent = c.question;
     $('pubCaptcha').value = '';
   } catch (err) {
-    $('captchaQuestion').textContent = '(gagal memuat)';
+    $('captchaQuestion').textContent = t('it.captchaFail');
   }
 }
 
@@ -87,11 +88,12 @@ export function mountPublic() {
   submit.onclick = async () => {
     const name = $('pubUser').value.trim();
     const issue = $('pubIssue').value.trim();
-    if (!name) { toast('Nama wajib diisi'); return; }
-    if (!issue) { toast('Uraian masalah wajib diisi'); return; }
-    if (!$('pubCaptcha').value.trim()) { toast('Jawab pertanyaan keamanan'); return; }
+    if (!name) { toast(t('it.nameRequired')); return; }
+    if (!issue) { toast(t('it.issueRequired')); return; }
+    if (!$('pubCaptcha').value.trim()) { toast(t('it.captchaRequired')); return; }
     submit.disabled = true;
-    submit.textContent = 'Mengirim…';
+    submit.dataset.i18n = 'it.sending';
+    submit.textContent = t('it.sending');
     try {
       const row = await api.publicPost('/api/it/tickets/public', {
         user_name: name,
@@ -101,8 +103,8 @@ export function mountPublic() {
         captcha_token: $('captchaToken').value,
         captcha_answer: $('pubCaptcha').value.trim()
       });
-      $('pubRes').textContent = `✅ Laporan diterima. Nomor tiket: ${row.ticket_no}. Tim IT akan menghubungi Anda.`;
-      toast('Laporan terkirim');
+      $('pubRes').textContent = t('it.reportOk', { no: row.ticket_no });
+      toast(t('it.reportSent'));
       $('pubUser').value = '';
       $('pubIssue').value = '';
       $('pubHost').value = '';
@@ -112,7 +114,8 @@ export function mountPublic() {
       await refreshCaptcha();
     } finally {
       submit.disabled = false;
-      submit.textContent = 'Kirim Laporan';
+      submit.dataset.i18n = 'it.send';
+      submit.textContent = t('it.send');
     }
   };
 }

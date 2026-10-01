@@ -1,19 +1,29 @@
 /* Kalkulator pure — hanya membaca DOM dan mengembalikan string hasil. */
 import { $ } from './ui.js';
+import { t, tList, localeTag } from './i18n.js';
+
+function num(n) {
+  return Number(n || 0).toLocaleString(localeTag());
+}
 
 export function calcListrik(kwh, base, tarif) {
   const biaya = kwh * tarif;
   const selisih = base - kwh;
   const pct = base ? (selisih / base) * 100 : 0;
+  const band = pct >= 3 ? 'good' : pct >= 0 ? 'ok' : 'over';
   return (
-    `Pemakaian listrik saat ini : ${kwh.toLocaleString('id-ID')} kWh\n` +
-    `Baseline / Target           : ${base.toLocaleString('id-ID')} kWh\n` +
-    `Tarif rata-rata             : Rp ${Math.round(tarif).toLocaleString('id-ID')} / kWh\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `Estimasi Biaya Bulan Ini    : Rp ${Math.round(biaya).toLocaleString('id-ID')}\n` +
-    `Selisih vs Baseline         : ${selisih >= 0 ? '-' : '+'} ${Math.abs(selisih).toLocaleString('id-ID')} kWh\n` +
-    `Persentase Perubahan        : ${pct >= 0 ? '▼' : '▲'} ${Math.abs(pct).toFixed(2)} % → ${pct >= 3 ? 'HEMAT' : pct >= 0 ? 'CUKUP' : 'OVER'}\n` +
-    `Kesimpulan                  : ${pct >= 3 ? '✅ Bagus — target hemat ≥3% tercapai.' : pct >= 0 ? '⚠️ Cukup — mendekati target hemat ≥3%.' : '❌ Melebihi baseline. Segera lakukan audit energi!'}`
+    t('calc.elec.use', { kwh: num(kwh) }) + '\n' +
+    t('calc.elec.base', { base: num(base) }) + '\n' +
+    t('calc.elec.tariff', { tarif: num(Math.round(tarif)) }) + '\n' +
+    t('calc.rule') + '\n' +
+    t('calc.elec.cost', { cost: num(Math.round(biaya)) }) + '\n' +
+    t('calc.elec.diff', { sign: selisih >= 0 ? '-' : '+', kwh: num(Math.abs(selisih)) }) + '\n' +
+    t('calc.elec.pct', {
+      arrow: pct >= 0 ? '▼' : '▲',
+      pct: Math.abs(pct).toFixed(2),
+      verdict: t('calc.elec.verdict.' + band)
+    }) + '\n' +
+    t('calc.elec.end', { text: t('calc.elec.end.' + band) })
   );
 }
 
@@ -21,95 +31,82 @@ export function calcGas(g, h, k) {
   const biaya = g * h;
   const mwh = g * k; // 1 MMbtu ≈ 0,2931 MWh (k = faktor konversi)
   return (
-    `Pemakaian gas         : ${g.toLocaleString('id-ID')} MMbtu\n` +
-    `Konversi              : ${k} MWh/MMbtu\n` +
-    `Harga satuan          : Rp ${Math.round(h).toLocaleString('id-ID')}/MMbtu\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `Energi ekuivalen      : ${mwh.toFixed(2)} MWh\n` +
-    `Estimasi Biaya        : Rp ${Math.round(biaya).toLocaleString('id-ID')}\n` +
-    `Rekomendasi           : Laporan bulanan memakai satuan MMbtu (WII-QR04-39).`
+    t('calc.gas.use', { g: num(g) }) + '\n' +
+    t('calc.gas.conv', { k }) + '\n' +
+    t('calc.gas.price', { h: num(Math.round(h)) }) + '\n' +
+    t('calc.rule') + '\n' +
+    t('calc.gas.mwh', { mwh: mwh.toFixed(2) }) + '\n' +
+    t('calc.gas.cost', { cost: num(Math.round(biaya)) }) + '\n' +
+    t('calc.gas.note')
   );
 }
 
 export function calcEff(a, b, u) {
   const p = ((a - b) / a) * 100;
+  const band = p >= 10 ? 'great' : p >= 5 ? 'good' : p > 0 ? 'some' : 'none';
   return (
-    `Sebelum Perbaikan  : ${a} satuan energi / unit\n` +
-    `Sesudah Perbaikan  : ${b} satuan energi / unit\n` +
-    `Volume Aktivitas   : ${u.toLocaleString('id-ID')} unit\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `Efisiensi Per Unit : ${p.toFixed(2)} %\n` +
-    `Total Penghematan  : ${((a - b) * u).toLocaleString('id-ID')} satuan energi\n` +
-    `Kesimpulan         : ${p >= 10 ? '✅ SANGAT BAGUS' : p >= 5 ? '👍 BAIK' : p > 0 ? '📈 Ada perbaikan' : '⚠️ Belum ada peningkatan'}`
+    t('calc.eff.before', { a }) + '\n' +
+    t('calc.eff.after', { b }) + '\n' +
+    t('calc.eff.volume', { u: num(u) }) + '\n' +
+    t('calc.rule') + '\n' +
+    t('calc.eff.pct', { p: p.toFixed(2) }) + '\n' +
+    t('calc.eff.saved', { n: num((a - b) * u) }) + '\n' +
+    t('calc.eff.end', { text: t('calc.eff.end.' + band) })
   );
 }
 
 export function jsaText(job, desc, org, alat) {
-  const DB = {
-    hotwork: ['Bahaya kebakaran & ledakan', 'Panas radiasi & UV', 'Kebocoran gas mudah terbakar', 'Asap & fumes', 'Luka bakar / cedera mata'],
-    workheight: ['Terjatuh dari ketinggian', 'Jatuhnya tools', 'Kerusakan scaffolding', 'Angin kencang', 'Kelelahan pekerja'],
-    confined: ['Kekurangan oksigen', 'Gas beracun', 'Aliran cairan tiba-tiba', 'Terjebak', 'Panas berlebih'],
-    electrical: ['Sengatan listrik', 'Arc flash', 'Korsleting panel', 'Isolasi rusak', 'Mati mendadak'],
-    lifting: ['Sling putus', 'Crane roboh', 'Beban jatuh', 'Tabrakan struktur', 'Operator tidak kompeten'],
-    lain: ['Identifikasi bahaya spesifik', 'PPE sesuai SOP', 'Toolbox meeting', 'Checklist peralatan']
-  };
-  const bahaya = DB[job] || DB.lain;
+  const bahaya = tList('jsa.hazard.' + job);
+  const list = bahaya.length ? bahaya : tList('jsa.hazard.lain');
   const level = ['hotwork', 'workheight', 'confined', 'electrical', 'lifting'].includes(job) ? 'HIGH' : 'MEDIUM';
   const jobName = $('sJob')?.selectedOptions?.[0]?.text || job;
   return (
-    `⚠️ JOB SAFETY ANALYSIS (JSA)\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `Jenis Pekerjaan : ${jobName}\n` +
-    `Level Risiko    : 🔴 ${level}\n` +
-    `Lokasi/Kondisi  : ${desc || '(tidak diisi)'}\n` +
-    `Pekerja         : ${org || 1} orang\n` +
-    `Peralatan       : ${alat || '(tidak diisi)'}\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `IDENTIFIKASI BAHAYA:\n` +
-    `${bahaya.map((b, i) => `  ${i + 1}. ${b}`).join('\n')}\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `CONTROL: Eliminasi → Substitusi → Engineering → Administrasi (izin kerja, TBM) → PPE\n` +
-    `SIGN-OFF: Pekerja / Pengawas / HSE Officer`
+    t('calc.jsa.head') + '\n' +
+    t('calc.rule') + '\n' +
+    t('calc.jsa.job', { v: jobName }) + '\n' +
+    t('calc.jsa.level', { v: level }) + '\n' +
+    t('calc.jsa.where', { v: desc || t('calc.empty') }) + '\n' +
+    t('calc.jsa.workers', { v: t('calc.people', { n: org || 1 }) }) + '\n' +
+    t('calc.jsa.tools', { v: alat || t('calc.empty') }) + '\n' +
+    t('calc.rule') + '\n' +
+    t('calc.jsa.hazards') + '\n' +
+    list.map((b, i) => `  ${i + 1}. ${b}`).join('\n') + '\n' +
+    t('calc.rule') + '\n' +
+    t('calc.jsa.control') + '\n' +
+    t('calc.jsa.sign')
   );
 }
 
-export function itGuide(cat, prob, host, meta) {
-  const guide = {
-    net: ['Cek kabel / lampu NIC', 'ipconfig /all — IP valid?', 'Ping gateway & 8.8.8.8', 'nslookup DNS', 'Ganti port/kabel', 'Eskalasi Network Team'],
-    email: ['Cek internet & akun AD', 'Profile Outlook baru', 'Uji OWA browser', 'Repair Office', 'Cek ukuran OST'],
-    wifi: ['Forget SSID + reconnect', 'Coba 5 GHz', 'flushdns + winsock reset', 'Update driver wireless', 'Cek AP/DHCP'],
-    print: ['Printer Ready?', 'Ping IP printer', 'Restart Print Spooler', 'Reinstall driver', 'Uji print Notepad'],
-    vpn: ['Internet stabil?', 'User + 2FA', 'Update client VPN', 'Uji hotspot HP', 'Kirim log Event Viewer'],
-    slow: ['Task Manager CPU/RAM/Disk', 'Disk Cleanup + SFC', 'Disable startup junk', 'Defender Offline Scan', 'Cek kesehatan SSD'],
-    pw: ['Verifikasi identitas helpdesk', 'SSPR portal', 'Reset AD + must change password', 'Unlock account', 'Bersihkan Credential Manager']
-  };
-  const label = meta?.enums?.ticketCategory?.find((o) => o.value === cat)?.label || cat;
+export function itGuide(cat, prob, host) {
+  const steps = tList('it.steps.' + cat);
+  const list = steps.length ? steps : tList('it.steps.slow');
+  const label = t('it.cat.' + cat);
   return (
-    `🔍 DIAGNOSA IT ISSD\n` +
-    `Host: ${host}\n` +
-    `Kategori: ${label}\n` +
-    `Gejala: ${prob || '(tidak diisi)'}\n` +
-    `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-    `${(guide[cat] || guide.slow).map((s, i) => `${i + 1}. ${s}`).join('\n')}\n` +
-    `SLA: Low 24j | Medium 8j | High 2j | Critical 30m`
+    t('calc.it.head') + '\n' +
+    t('calc.it.host', { v: host }) + '\n' +
+    t('calc.it.cat', { v: label === 'it.cat.' + cat ? cat : label }) + '\n' +
+    t('calc.it.sym', { v: prob || t('calc.empty') }) + '\n' +
+    t('calc.rule') + '\n' +
+    list.map((s, i) => `${i + 1}. ${s}`).join('\n') + '\n' +
+    t('calc.it.sla')
   );
 }
 
-export function calcAC(p, l, t, o, eq, sun) {
+export function calcAC(p, l, tHigh, o, eq, sun, eqLabel, sunLabel) {
   const luas = p * l;
   let btusq = 500;
-  if (sun.startsWith('Normal')) btusq = 600;
-  if (sun.startsWith('Terbuka')) btusq = 700;
+  if (String(sun).startsWith('Normal')) btusq = 600;
+  if (String(sun).startsWith('Terbuka')) btusq = 700;
   let base = luas * btusq + o * 500;
   const eqFactor = { ringan: 1, sedang: 1.2, berat: 1.4 }[eq];
   base *= eqFactor;
   const pk = base / 9000;
   const pkRekom = Math.ceil(pk * 2) / 2;
   return (
-    `❄️ PERHITUNGAN KEBUTUHAN AC\n` +
-    `Ukuran: ${p} x ${l} x ${t} m → ${luas.toFixed(1)} m²\n` +
-    `Orang: ${o} · Peralatan: ${eq} ×${eqFactor} · Matahari: ${sun}\n` +
-    `BTU/jam: ${Math.round(base).toLocaleString('id-ID')}\n` +
-    `Exact: ${pk.toFixed(2)} PK · Rekomendasi: ${pkRekom.toFixed(1)} PK`
+    t('calc.ac.head') + '\n' +
+    t('calc.ac.size', { p, l, t: tHigh, area: luas.toFixed(1) }) + '\n' +
+    t('calc.ac.meta', { o, eq: eqLabel || eq, factor: eqFactor, sun: sunLabel || sun }) + '\n' +
+    t('calc.ac.btu', { n: num(Math.round(base)) }) + '\n' +
+    t('calc.ac.pk', { pk: pk.toFixed(2), rec: pkRekom.toFixed(1) })
   );
 }

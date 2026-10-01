@@ -1,17 +1,18 @@
 /* Halaman Settings: nilai KPI, tarif, target, infra IT, akun, dan pengguna. */
 import { api, currentUser } from '../api.js';
 import { $, renderInto, table, row, html, esc, toast, toastErr, openForm, confirmDialog } from '../ui.js';
+import { t } from '../i18n.js';
 
 export const id = 'settings';
 
 function valueCell(kind, item) {
   return html(
-    `<span class="clickable" data-kind="${esc(kind)}" data-key="${esc(item.key)}" data-value="${esc(item.value)}" title="Klik untuk mengubah">${esc(item.value)}</span>`
+    `<span class="clickable" data-kind="${esc(kind)}" data-key="${esc(item.key)}" data-value="${esc(item.value)}" title="${esc(t('settings.click'))}">${esc(item.value)}</span>`
   );
 }
 
 async function editValue(kind, key, current) {
-  const fields = [{ name: 'value', label: `Nilai baru untuk ${key}`, required: true, value: current }];
+  const fields = [{ name: 'value', label: t('settings.newValue', { key }), required: true, value: current }];
   let endpoint = '';
   let body = {};
   if (kind === 'setting') endpoint = `/api/settings/${key}`;
@@ -20,22 +21,22 @@ async function editValue(kind, key, current) {
     endpoint = `/api/it/infra/${key}`;
     fields.push({
       name: 'severity',
-      label: 'Severity',
+      label: t('settings.severity'),
       type: 'select',
       options: ['ok', 'warn', 'danger', 'info'],
       value: 'info'
     });
   }
   openForm({
-    title: `Ubah ${kind === 'infra' ? 'Infrastruktur' : kind === 'kpi' ? 'KPI' : 'Setting'}`,
+    title: kind === 'infra' ? t('settings.editInfra') : kind === 'kpi' ? t('settings.editKpi') : t('settings.editSetting'),
     fields,
     values: { value: current },
-    hint: 'Perubahan tercatat di log aktivitas.',
+    hint: t('settings.audit'),
     onSubmit: async (values) => {
       body = { value: values.value };
       if (kind === 'infra') body.severity = values.severity;
       await api.patch(endpoint, body);
-      toast('Tersimpan');
+      toast(t('settings.saved'));
       await load();
     }
   });
@@ -55,20 +56,20 @@ async function loadUsers() {
     renderInto(
       'usersTable',
       table(
-        ['Username', 'Role', 'Dibuat', 'Aksi'],
+        [t('settings.col.user'), t('settings.col.role'), t('settings.col.created'), t('energy.col.action')],
         users.map((u) =>
           row([
             u.username,
-            u.role === 'admin' ? 'Admin' : 'Staff',
+            u.role === 'admin' ? t('role.admin') : t('role.staff'),
             u.created_at,
             html(`<td class="row-actions">${
               u.id === me.id
-                ? '<span class="small">akun sendiri</span>'
-                : `<button type="button" class="icon-btn del" data-act="delUser" data-id="${esc(u.id)}" data-label="${esc(u.username)}" title="Hapus">🗑</button>`
+                ? `<span class="small">${esc(t('settings.self'))}</span>`
+                : `<button type="button" class="icon-btn del" data-act="delUser" data-id="${esc(u.id)}" data-label="${esc(u.username)}" title="${esc(t('crud.delete'))}">🗑</button>`
             }</td>`)
           ]).__html
         ),
-        { empty: 'Belum ada pengguna lain.' }
+        { empty: t('settings.noUsers') }
       )
     );
   } catch (err) {
@@ -78,16 +79,16 @@ async function loadUsers() {
 
 function addUserDialog() {
   openForm({
-    title: 'Tambah Pengguna',
+    title: t('settings.addTitle'),
     fields: [
-      { name: 'username', label: 'Username', required: true, placeholder: 'mis. budi' },
-      { name: 'password', label: 'Password (min. 6 karakter)', type: 'password', required: true, min: 6 },
-      { name: 'role', label: 'Role', type: 'select', options: ['staff', 'admin'] }
+      { name: 'username', label: t('login.user'), required: true, placeholder: t('ph.example') },
+      { name: 'password', label: t('settings.pwMin'), type: 'password', required: true, min: 6 },
+      { name: 'role', label: t('settings.col.role'), type: 'select', options: ['staff', 'admin'] }
     ],
-    submitLabel: 'Tambah',
+    submitLabel: t('settings.add'),
     onSubmit: async (values) => {
       await api.post('/api/auth/users', values);
-      toast(`Pengguna "${values.username}" ditambahkan`);
+      toast(t('settings.userAdded', { name: values.username }));
       await loadUsers();
     }
   });
@@ -95,15 +96,15 @@ function addUserDialog() {
 
 function changePasswordDialog() {
   openForm({
-    title: 'Ganti Password',
+    title: t('settings.pw'),
     fields: [
-      { name: 'old_password', label: 'Password Lama', type: 'password', required: true },
-      { name: 'new_password', label: 'Password Baru (min. 6 karakter)', type: 'password', required: true, min: 6 }
+      { name: 'old_password', label: t('settings.oldPw'), type: 'password', required: true },
+      { name: 'new_password', label: t('settings.newPw'), type: 'password', required: true, min: 6 }
     ],
-    submitLabel: 'Simpan Password',
+    submitLabel: t('settings.savePw'),
     onSubmit: async (values) => {
       await api.post('/api/auth/password', values);
-      toast('Password diganti. Perangkat lain akan diminta login ulang.');
+      toast(t('settings.pwChanged'));
     }
   });
 }
@@ -113,17 +114,17 @@ export async function load() {
   const rows = (d.settings || []).map((s) =>
     row([s.key, s.label, s.value, s.unit || '-', valueCell('setting', s)]).__html
   );
-  renderInto('settingsTable', table(['Key', 'Label', 'Nilai', 'Unit', 'Aksi'], rows, { empty: 'Tidak ada setting.' }));
+  renderInto('settingsTable', table([t('settings.col.key'), t('settings.col.label'), t('settings.col.value'), t('settings.col.unit'), t('energy.col.action')], rows, { empty: t('settings.noSettings') }));
 
   const kpiRows = (d.kpis || []).map((k) =>
     row([k.key, k.label, k.value, k.color || '-', valueCell('kpi', k)]).__html
   );
-  renderInto('kpiTable', table(['Key', 'Label', 'Nilai', 'Color', 'Aksi'], kpiRows, { empty: 'Tidak ada KPI.' }));
+  renderInto('kpiTable', table([t('settings.col.key'), t('settings.col.label'), t('settings.col.value'), t('settings.col.color'), t('energy.col.action')], kpiRows, { empty: t('settings.noKpi') }));
 
   const infraRows = (d.infra || []).map((i) =>
     row([i.key, i.label, i.value, i.severity, valueCell('infra', i)]).__html
   );
-  renderInto('infraTable', table(['Key', 'Label', 'Nilai', 'Severity', 'Aksi'], infraRows, { empty: 'Tidak ada infra IT.' }));
+  renderInto('infraTable', table([t('settings.col.key'), t('settings.col.label'), t('settings.col.value'), t('settings.severity'), t('energy.col.action')], infraRows, { empty: t('settings.noInfra') }));
 
   await loadUsers();
 }
@@ -160,11 +161,11 @@ export function mount() {
       const id = btn.dataset.id;
       const label = btn.dataset.label || '';
       confirmDialog({
-        title: 'Hapus pengguna?',
-        message: `${label}\n\nSesi login pengguna ini juga dicabut.`,
+        title: t('settings.delTitle'),
+        message: t('settings.delMsg', { label }),
         onConfirm: async () => {
           await api.del(`/api/auth/users/${id}`);
-          toast('Pengguna dihapus');
+          toast(t('settings.deleted'));
           await loadUsers();
         }
       });
