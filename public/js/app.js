@@ -109,6 +109,11 @@ function wireNav() {
   if (staffBtn) {
     staffBtn.onclick = () => showGate();
   }
+  const guestLogin = $('guestFullLogin');
+  if (guestLogin && !guestLogin.dataset.wired) {
+    guestLogin.dataset.wired = '1';
+    guestLogin.onclick = () => showGate();
+  }
 }
 
 function wireLogout() {

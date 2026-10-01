@@ -20,6 +20,9 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
 body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   font-family: Manrope, "Segoe UI", sans-serif;
   background:
     radial-gradient(1000px 520px at 88% -8%, rgba(46, 230, 199, 0.09), transparent 55%),
@@ -97,7 +100,7 @@ body {
   border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; cursor: pointer;
 }
 
-.layout { min-height: calc(100vh - 64px); }
+.layout { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
 .side {
   display: flex; flex-direction: row; align-items: center; gap: 2px;
@@ -133,11 +136,51 @@ body {
 .fab:active { transform: scale(0.96); }
 body.is-public .fab { display: none; }
 
-.main { padding: 28px 28px 64px; max-width: 1480px; margin: 0 auto; }
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 28px 28px 36px;
+  max-width: 1480px;
+  margin: 0 auto;
+  width: 100%;
+}
+/* Beranda tamu di layar lebar mengisi sisa tinggi supaya ringkasan tidak
+   berhenti di tengah halaman. Di layar sempit panel ditumpuk, tinggi mengikuti isi. */
+@media (min-width: 861px) {
+  .is-public #home { flex: 1; display: flex; flex-direction: column; }
+  .is-public #publicSummary { flex: 1; min-height: 280px; }
+  .is-public #publicSummary > .panel { display: flex; flex-direction: column; min-height: 0; }
+  .is-public #publicEnergyChart.chart-bar { flex: 1; height: auto; min-height: 200px; }
+  .public-actions .action-stack { margin-top: auto; padding-top: 18px; }
+}
 .title { font-size: 26px; font-weight: 800; margin: 0 0 6px; letter-spacing: -0.02em; }
 .sub { color: var(--muted); margin-bottom: 22px; font-size: 14.5px; }
 
+.public-actions > .small:not(.action-hint) { margin: 0 0 14px; line-height: 1.45; }
+.public-actions .block { width: 100%; }
+.public-actions .action-hint { margin: 6px 0 14px; }
+.public-actions .action-hint:last-child { margin-bottom: 0; }
+
+.site-foot {
+  max-width: 1480px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 12px 28px 18px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--line);
+  color: #6f849b;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
 .cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+/* Tamu tidak melihat lima kartu modul. Aksi yang bisa diklik ada di #publicSummary. */
+.is-public .cards { display: none; }
 .card {
   background: linear-gradient(180deg, rgba(22, 38, 60, 0.95), rgba(14, 26, 44, 0.95));
   border: 1px solid var(--line); border-radius: var(--radius);
@@ -268,6 +311,9 @@ body:not(.is-public) .public-only { display: none !important; }
   display: flex; align-items: end; gap: 12px;
   height: 180px; margin-top: 28px; padding: 0 6px 28px;
 }
+.chart-bar.is-empty {
+  display: block; height: auto; margin-top: 0; padding: 4px 0 0;
+}
 .bar {
   flex: 1;
   background: linear-gradient(180deg, #b6fff2 0%, #2ee6c7 28%, #0f766e 100%);
@@ -284,7 +330,24 @@ body:not(.is-public) .public-only { display: none !important; }
   font-size: 11px; font-weight: 800; color: #d7fff6;
 }
 
-.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+.stat-row {
+  display: grid;
+  /* auto-fit: 4 KPI staff tetap satu baris; kartu kosong yang disembunyikan
+     di mode tamu tidak meninggalkan kolom hampa. */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.stat-row.is-blank { display: none; }
+.stat-box.is-empty .stat-num { color: #5c7086; font-weight: 600; }
+.stat-box.is-empty::after { opacity: 0.4; }
+.stat-note {
+  position: relative;
+  margin-top: 4px;
+  font-size: 11px;
+  letter-spacing: 0.01em;
+  color: #6f849b;
+}
 .stat-box {
   background: linear-gradient(180deg, rgba(22, 38, 60, 0.95), rgba(14, 26, 44, 0.95));
   border: 1px solid var(--line); border-radius: 16px;
@@ -456,4 +519,5 @@ label.check input { width: auto; margin: 0; }
   .cards, .stat-row { grid-template-columns: 1fr 1fr; }
   .grid { grid-template-columns: 1fr; }
   .main { padding: 18px; }
+  .site-foot { padding: 12px 18px 16px; }
 }

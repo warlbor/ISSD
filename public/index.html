@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ISSD — Integrated Site Services Dashboard</title>
+  <link rel="icon" href="/favicon.ico" sizes="32x32">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/styles.css">
@@ -63,14 +65,31 @@
   <main class="main">
     <section id="home">
       <div class="title">Dashboard Ringkasan Site Services</div>
-      <div class="sub">Pandangan terpadu Energy · Safety · GA · IT · Facility — data dari database, bukan HTML statis.</div>
+      <div class="sub auth-only">Pandangan terpadu Energy · Safety · GA · IT · Facility — data dari database, bukan HTML statis.</div>
+      <div class="sub public-only">Ringkasan energi untuk tamu. Login staff untuk modul operasional.</div>
       <div class="stat-row" id="homeStats"></div>
       <div class="cards">
-        <div class="card energy" data-page="energy"><div class="icon">⚡</div><div class="ct">Energy</div><div class="cd">Listrik · Gas · Air · Panel Surya · Efisiensi</div></div>
-        <div class="card safety" data-page="safety"><div class="icon">🛡</div><div class="ct">Safety & HSE</div><div class="cd">Insiden · Near Miss · PPE · Inspeksi · Izin Kerja</div></div>
-        <div class="card ga" data-page="ga"><div class="icon">🏢</div><div class="ct">General Affairs</div><div class="cd">Kendaraan · ATK · Resepsionis · Kantor · Catering</div></div>
+        <div class="card energy staff-only" data-page="energy"><div class="icon">⚡</div><div class="ct">Energy</div><div class="cd">Listrik · Gas · Air · Panel Surya · Efisiensi</div></div>
+        <div class="card safety staff-only" data-page="safety"><div class="icon">🛡</div><div class="ct">Safety & HSE</div><div class="cd">Insiden · Near Miss · PPE · Inspeksi · Izin Kerja</div></div>
+        <div class="card ga staff-only" data-page="ga"><div class="icon">🏢</div><div class="ct">General Affairs</div><div class="cd">Kendaraan · ATK · Resepsionis · Kantor · Catering</div></div>
         <div class="card it" data-page="it"><div class="icon">💻</div><div class="ct">IT Infrastructure</div><div class="cd">Jaringan · Server · Tiket · Inventaris · Keamanan</div></div>
-        <div class="card facility" data-page="facility"><div class="icon">🔧</div><div class="ct">Facility</div><div class="cd">AC · Plumbing · Lift · Genset · Perawatan Gedung</div></div>
+        <div class="card facility staff-only" data-page="facility"><div class="icon">🔧</div><div class="ct">Facility</div><div class="cd">AC · Plumbing · Lift · Genset · Perawatan Gedung</div></div>
+      </div>
+      <div class="grid public-only" id="publicSummary">
+        <div class="panel">
+          <h3>Konsumsi Listrik 6 Bulan Terakhir (ribu kWh)</h3>
+          <div class="chart-bar" id="publicEnergyChart"></div>
+        </div>
+        <div class="panel public-actions">
+          <h3>Akses tamu</h3>
+          <p class="small">Yang bisa dilakukan tanpa login. Modul lain terbuka setelah masuk sebagai staff.</p>
+          <div class="action-stack">
+            <button type="button" class="secondary block" data-page="it">Laporkan masalah IT</button>
+            <p class="small action-hint">Jaringan, email, atau perangkat — tiket langsung ke tim IT.</p>
+            <button type="button" class="block" id="guestFullLogin">Login untuk modul lengkap</button>
+            <p class="small action-hint">Energy · Safety · GA · Facility</p>
+          </div>
+        </div>
       </div>
       <div class="grid staff-only-sec">
         <div class="panel">
@@ -486,6 +505,10 @@
       </div>
     </section>
   </main>
+  <footer class="site-foot">
+    <span>ISSD · Integrated Site Services</span>
+    <span>v2.0.0 · © 2026</span>
+  </footer>
 </div>
 <div class="toast" id="toast"></div>
 <script type="module" src="/js/app.js"></script>

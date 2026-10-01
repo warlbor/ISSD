@@ -12,6 +12,8 @@ const baseScript =
 let html = src.replace('<head>', '<head>\n  ' + baseScript);
 html = html.replace('href="/css/styles.css"', 'href="css/styles.css"');
 html = html.replace('src="/js/app.js"', 'src="js/app.js"');
+html = html.replace('href="/favicon.ico"', 'href="favicon.ico"');
+html = html.replace('href="/favicon.svg"', 'href="favicon.svg"');
 fs.writeFileSync(path.join(root, 'index.html'), html);
 
 const db = getDb();
