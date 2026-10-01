@@ -133,6 +133,13 @@ export function kpiBoxes(items) {
   return html(
     items
       .map((it) => {
+        if (it.empty) {
+          return `<div class="stat-box is-empty">
+            <div class="stat-num">—</div>
+            <div class="stat-lbl">${esc(it.lbl)}</div>
+            <div class="stat-note">Belum ada data</div>
+          </div>`;
+        }
         const cycle = it.cycle ? `<span class="cycle-hint">⟳ klik</span>` : '';
         const attrs = it.cycle ? ` data-cycle='${esc(JSON.stringify(it.cycle))}'` : '';
         return `<div class="stat-box${it.cycle ? ' energy-cycle' : ''}"${attrs}>
@@ -197,6 +204,12 @@ export function renderInto(id, content) {
 }
 
 export function renderStats(id, items) {
+  const el = $(id);
+  if (el) el.classList.toggle('is-blank', !items || !items.length);
+  if (!items || !items.length) {
+    if (el) el.innerHTML = '';
+    return;
+  }
   renderInto(id, kpiBoxes(items));
 }
 
