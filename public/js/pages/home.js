@@ -1,13 +1,12 @@
 /* Halaman Dashboard: data ringkasan dari /api/dashboard.
    Mode tamu memakai /api/public/dashboard (tanpa alert & work order). */
 import { api } from '../api.js';
-import { $, renderStats, renderInto, table, row, html, esc, tagClass, tag, pill, monthLabel } from '../ui.js';
+import { $, renderStats, renderInto, table, row, html, esc, tagClass, tag, pill, monthLabel, fmtNum } from '../ui.js';
+import { t, localizeMonthText } from '../i18n.js';
 
 export const id = 'home';
 
-function fmt(n) {
-  return Number(n || 0).toLocaleString('id-ID');
-}
+const fmt = fmtNum;
 
 /* Nilai placeholder dari purge data dummy — jangan ditampilkan sebagai angka. */
 function blankKpi(value) {
@@ -21,49 +20,51 @@ function siteStat(value, lbl, color) {
 }
 
 function energyCycle(ed) {
-  if (!ed.kwh) return { lbl: 'kWh Listrik', empty: true };
+  if (!ed.kwh) return { lbl: t('home.kpi.kwh'), empty: true };
+  const month = localizeMonthText(ed.month);
+  const prev = localizeMonthText(ed.prevMonth) || t('home.kpi.prevMonth');
   const pctText = ed.pct != null ? `${ed.pct >= 0 ? '▲' : '▼'} ${Math.abs(ed.pct).toFixed(1)}%` : null;
   const cycle = [
     ...(pctText
-      ? [{ num: pctText, lbl: `Listrik ${ed.month || ''}`.trim(), cls: ed.pct > 0 ? 'orange' : 'green' }]
+      ? [{ num: pctText, lbl: t('home.kpi.elecMonth', { month }).trim(), cls: ed.pct > 0 ? 'orange' : 'green' }]
       : []),
-    { num: fmt(Math.round(ed.kwh)), lbl: 'kWh Listrik', cls: '' },
-    { num: `${ed.mwh.toFixed(1)} MWh`, lbl: 'Mega Watt hour', cls: 'blue' },
-    { num: `Rp ${fmt(Math.round(ed.cost))}`, lbl: 'Biaya Listrik', cls: 'purple' },
-    { num: `${ed.co2.toFixed(1)} ton`, lbl: 'Estimasi CO₂', cls: 'red' }
+    { num: fmt(Math.round(ed.kwh)), lbl: t('home.kpi.kwh'), cls: '' },
+    { num: `${ed.mwh.toFixed(1)} MWh`, lbl: t('home.kpi.mwh'), cls: 'blue' },
+    { num: `Rp ${fmt(Math.round(ed.cost))}`, lbl: t('home.kpi.cost'), cls: 'purple' },
+    { num: `${ed.co2.toFixed(1)} ton`, lbl: t('home.kpi.co2'), cls: 'red' }
   ];
   const first = cycle[0];
   return {
     num: first.num,
     lbl: pctText
-      ? `Listrik ${ed.month || ''} ${ed.year || ''} vs ${ed.prevMonth || 'bulan lalu'}`.replace(/\s+/g, ' ').trim()
-      : 'kWh Listrik',
+      ? t('home.kpi.elecCompare', { month, year: ed.year || '', prev }).replace(/\s+/g, ' ').trim()
+      : t('home.kpi.kwh'),
     color: first.cls || '',
     cycle
   };
 }
 
 function energySummary(ed) {
-  const when = [ed.month, ed.year].filter(Boolean).join(' ');
+  const when = [localizeMonthText(ed.month), ed.year].filter(Boolean).join(' ');
   const stats = [
     {
       num: fmt(Math.round(ed.kwh)),
-      lbl: when ? `kWh Listrik · ${when}` : 'kWh Listrik'
+      lbl: when ? t('home.kpi.kwhWhen', { when }) : t('home.kpi.kwh')
     }
   ];
   if (ed.pct != null) {
     stats.push({
       num: `${ed.pct >= 0 ? '▲' : '▼'} ${Math.abs(ed.pct).toFixed(1)}%`,
-      lbl: `vs ${ed.prevMonth || 'bulan lalu'}`,
+      lbl: t('home.kpi.vsPrev', { month: localizeMonthText(ed.prevMonth) || t('home.kpi.prevMonth') }),
       color: ed.pct > 0 ? 'orange' : 'green'
     });
   }
   /* Rp 0 / 0 ton berarti tarif atau faktor emisi belum diisi, bukan konsumsi nol. */
   if (Number(ed.cost) > 0) {
-    stats.push({ num: `Rp ${fmt(Math.round(ed.cost))}`, lbl: 'Biaya Listrik', color: 'purple' });
+    stats.push({ num: `Rp ${fmt(Math.round(ed.cost))}`, lbl: t('home.kpi.cost'), color: 'purple' });
   }
   if (Number(ed.co2) > 0) {
-    stats.push({ num: `${Number(ed.co2).toFixed(1)} ton`, lbl: 'Estimasi CO₂' });
+    stats.push({ num: `${Number(ed.co2).toFixed(1)} ton`, lbl: t('home.kpi.co2') });
   }
   return stats;
 }
@@ -81,16 +82,16 @@ function publicStats(d) {
   if (!safety && !itOpen && !uptime && hasEnergy) return energySummary(ed);
 
   const stats = [];
-  if (safety) stats.push({ num: safety, lbl: 'Kepatuhan Safety Bulan Ini', color: 'green' });
+  if (safety) stats.push({ num: safety, lbl: t('home.kpi.safety'), color: 'green' });
   if (hasEnergy) {
-    const when = [ed.month, ed.year].filter(Boolean).join(' ');
+    const when = [localizeMonthText(ed.month), ed.year].filter(Boolean).join(' ');
     stats.push({
       num: fmt(Math.round(ed.kwh)),
-      lbl: when ? `kWh Listrik · ${when}` : 'kWh Listrik'
+      lbl: when ? t('home.kpi.kwhWhen', { when }) : t('home.kpi.kwh')
     });
   }
-  if (itOpen) stats.push({ num: itOpen, lbl: 'Tiket IT Open', color: 'blue' });
-  if (uptime) stats.push({ num: uptime, lbl: 'Uptime Facility', color: 'purple' });
+  if (itOpen) stats.push({ num: itOpen, lbl: t('home.kpi.itOpen'), color: 'blue' });
+  if (uptime) stats.push({ num: uptime, lbl: t('home.kpi.uptime'), color: 'purple' });
   return stats;
 }
 
@@ -99,7 +100,7 @@ function renderEnergyChart(id, rows) {
   const el = $(id);
   if (!data.length) {
     if (el) el.classList.add('is-empty');
-    renderInto(id, html('<p class="small">Belum ada data konsumsi listrik.</p>'));
+    renderInto(id, html(`<p class="small">${esc(t('home.chartEmpty'))}</p>`));
     return;
   }
   if (el) el.classList.remove('is-empty');
@@ -123,10 +124,10 @@ export async function load() {
   const ed = d.energyDelta || {};
 
   renderStats('homeStats', [
-    siteStat(d.kpis.safety_compliance?.value, 'Kepatuhan Safety Bulan Ini', 'green'),
+    siteStat(d.kpis.safety_compliance?.value, t('home.kpi.safety'), 'green'),
     energyCycle(ed),
-    siteStat(d.kpis.it_open?.value, 'Tiket IT Open', 'blue'),
-    siteStat(d.kpis.facility_uptime?.value, 'Uptime Facility', 'purple')
+    siteStat(d.kpis.it_open?.value, t('home.kpi.itOpen'), 'blue'),
+    siteStat(d.kpis.facility_uptime?.value, t('home.kpi.uptime'), 'purple')
   ]);
 
   renderEnergyChart('energyChart', d.energy);
@@ -142,26 +143,26 @@ export async function load() {
             <b class="kpi-val ${cls}">${esc(a.extra || '')}</b>
           </div>`;
         })
-        .join('') || '<p class="small">Tidak ada alert aktif.</p>'
+        .join('') || `<p class="small">${esc(t('home.noAlerts'))}</p>`
     )
   );
 
   renderInto(
     'homeWOs',
     table(
-      ['No', 'Modul', 'Uraian', 'Status', 'Prioritas'],
+      [t('home.col.no'), t('home.col.module'), t('home.col.desc'), t('home.col.status'), t('home.col.priority')],
       (d.workOrders || []).map((w) =>
         row([w.wo_no, tag(w.module), w.description, pill(w.status), w.priority])
       ),
-      { empty: 'Belum ada work order terbaru.' }
+      { empty: t('home.noWo') }
     )
   );
 
-  const t = d.targets || {};
+  const targets = d.targets || {};
   renderInto(
     'targetList',
     html(
-      (t.items || [])
+      (targets.items || [])
         .map((i) => `<div class="kpi"><span class="kpi-label">${esc(i.label)}</span><b class="kpi-val ${i.color || ''}">${esc(i.value)}</b></div>`)
         .join('') || ''
     )

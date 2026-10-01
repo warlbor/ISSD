@@ -3,22 +3,14 @@
 
 import { api } from '../api.js';
 import { $, renderInto, table, row } from '../ui.js';
+import { t } from '../i18n.js';
 
 export const id = 'ai';
-
-const MODULE_TITLES = {
-  semua: 'Semua Modul',
-  energy: 'Energy',
-  safety: 'Safety',
-  ga: 'GA',
-  it: 'IT',
-  facility: 'Facility'
-};
 
 function mdToHtml(src) {
   /* Markdown ringan untuk jawaban AI: **tebal**, *miring*, `kode`,
      heading #, list "- " dan "1.". Semua di-escape dulu (aman untuk innerHTML). */
-  const inline = (t) => t
+  const inline = (text) => text
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>')
     .replace(/(^|[\s(])\*([^*\n]+)\*(?=$|[\s.,;:!?)]|$)/g, '$1<i>$2</i>')
@@ -62,9 +54,9 @@ export async function load() {
   renderInto(
     'aiHistory',
     table(
-      ['Waktu', 'Modul', 'Pertanyaan'],
+      [t('ai.col.time'), t('ai.col.mod'), t('ai.col.q')],
       (logs || []).slice(0, 20).map((l) => row([l.created_at, l.module, l.question]).__html),
-      { empty: 'Belum ada percakapan.' }
+      { empty: t('ai.empty') }
     )
   );
 }
@@ -73,11 +65,11 @@ export function mount() {
   $('btnAi').onclick = async () => {
     const q = $('aiQ').value.trim();
     if (!q) {
-      $('aiRes').textContent = 'Silakan tuliskan pertanyaan terlebih dahulu.';
+      $('aiRes').textContent = t('ai.needQ');
       return;
     }
     const m = $('aiModul').value;
-    $('aiRes').textContent = '⏳ Meminta jawaban ke AI…';
+    $('aiRes').textContent = t('ai.waiting');
 
     try {
       const res = await api.post('/api/ai/ask', { module: m, question: q });

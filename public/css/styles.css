@@ -58,6 +58,29 @@ body {
   color: var(--accent);
 }
 .header-right { display: flex; gap: 10px; align-items: center; margin-left: auto; flex: none; }
+.lang-switch {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+  flex: none;
+}
+.lang-switch button {
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+  border-radius: 0;
+  padding: 6px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+.lang-switch button + button { box-shadow: inset 1px 0 0 var(--line); }
+.lang-switch button.active { background: rgba(46, 230, 199, 0.18); color: var(--accent); }
+.lang-row { display: flex; justify-content: flex-end; margin-bottom: 4px; }
 .date-info {
   font-size: 12px; color: var(--muted);
   background: rgba(255, 255, 255, 0.04);
@@ -485,6 +508,7 @@ label.check input { width: auto; margin: 0; }
   color: var(--muted); margin-top: 6px;
 }
 .gate-card button { margin-top: 4px; }
+.gate-card .lang-switch button { margin-top: 0; }
 .gate-msg { color: var(--danger); min-height: 18px; margin-top: 10px; text-align: center; }
 
 @keyframes pop { from { transform: translateY(10px); opacity: 0; } }
@@ -495,6 +519,10 @@ label.check input { width: auto; margin: 0; }
   .grid, .stat-row { grid-template-columns: 1fr 1fr; }
   .grid-3 { grid-template-columns: 1fr; }
   .date-info { display: none; }
+}
+
+@media (max-width: 720px) {
+  .badge { display: none; }
 }
 
 @media (max-width: 860px) {

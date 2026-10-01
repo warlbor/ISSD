@@ -3,10 +3,9 @@ import { api } from '../api.js';
 import { $, renderInto, renderStats, table, row, html, esc, fmtNum, monthLabel, toast, toastOk } from '../ui.js';
 import { addButton, actionsCell } from '../crud.js';
 import { calcListrik, calcGas, calcEff } from '../calc.js';
+import { t, localizeMonthText, tx } from '../i18n.js';
 
 export const id = 'energy';
-
-const MONTHS = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
 /* Progress bar target penghematan listrik: YTD tahun berjalan vs periode yang
    sama tahun sebelumnya, terhadap target_hemat_listrik di Pengaturan. */
@@ -15,7 +14,7 @@ function renderTarget(s, cur, active) {
   if (!el) return;
   const target = Number(s.target_hemat_listrik) || 0;
   if (!target || !cur.year) {
-    el.innerHTML = '<p class="small">Atur Target Penghematan Listrik di menu Pengaturan untuk melihat progres di sini.</p>';
+    el.innerHTML = `<p class="small">${esc(t('energy.needTarget'))}</p>`;
     return;
   }
   const sumKwh = (rows) => rows.reduce((a, r) => a + (r.electricity_kwh || 0), 0);
@@ -30,24 +29,23 @@ function renderTarget(s, cur, active) {
   const ytdThis = sumKwh(active.filter((r) => r.year === cur.year && monthsBoth.includes(r.month)));
   const ytdLast = sumKwh(active.filter((r) => r.year === cur.year - 1 && monthsBoth.includes(r.month)));
   if (!ytdThis || !ytdLast) {
-    el.innerHTML = `<p class="small">Belum cukup data untuk membandingkan YTD ${cur.year} vs ${cur.year - 1}.
-      Penghematan dihitung dari total kWh bulan-bulan yang ada datanya di kedua tahun.</p>`;
+    el.innerHTML = `<p class="small">${esc(t('energy.needYtd', { year: cur.year, prev: cur.year - 1 }))}</p>`;
     return;
   }
   const saving = ((ytdLast - ytdThis) / ytdLast) * 100; // positif = hemat
   const progress = Math.max(0, Math.min(100, (saving / target) * 100));
   const color = saving >= target ? '#22c55e' : saving >= 0 ? '#38bdf8' : '#ef4444';
-  const status = saving >= target ? '✅ Target tercapai' : saving >= 0 ? '⏳ Belum capai target' : '⚠️ Konsumsi naik vs tahun lalu';
-  const periodTxt = monthsBoth.map((m) => MONTHS[m] || m).join(', ');
+  const status = saving >= target ? t('energy.targetHit') : saving >= 0 ? t('energy.targetMiss') : t('energy.targetUp');
+  const periodTxt = monthsBoth.map((m) => monthLabel(m)).join(', ');
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;margin-bottom:8px">
       <span style="font-size:22px;font-weight:800;color:${color}">${saving.toFixed(1)}%</span>
-      <span class="small">${status} · target hemat ${fmtNum(target)}%</span>
+      <span class="small">${esc(t('energy.targetMeta', { status, target: fmtNum(target) }))}</span>
     </div>
     <div style="background:var(--line);border-radius:999px;height:12px;overflow:hidden">
       <div style="width:${progress}%;height:100%;background:${color};border-radius:999px;transition:width .4s"></div>
     </div>
-    <p class="small mt-8">${periodTxt}: ${fmtNum(Math.round(ytdThis))} kWh (${cur.year}) vs ${fmtNum(Math.round(ytdLast))} kWh (${cur.year - 1}).</p>`;
+    <p class="small mt-8">${esc(t('energy.ytdLine', { period: periodTxt, now: fmtNum(Math.round(ytdThis)), year: cur.year, prevKwh: fmtNum(Math.round(ytdLast)), prevYear: cur.year - 1 }))}</p>`;
 }
 
 function recalcListrik() {
@@ -75,7 +73,7 @@ function bindTabs() {
   document.querySelectorAll('[data-etab]').forEach((btn) => {
     btn.addEventListener('click', () => {
       ['et0', 'et1', 'et2'].forEach((id, k) => $(id).classList.toggle('hidden', k !== Number(btn.dataset.etab)));
-      btn.parentNode.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+      btn.parentNode.querySelectorAll('.tab').forEach((tab) => tab.classList.remove('active'));
       btn.classList.add('active');
     });
   });
@@ -99,14 +97,14 @@ async function importEnergy() {
   const input = $('energyFile');
   const resultEl = $('importResult');
   if (!input.files[0]) {
-    resultEl.textContent = 'Pilih file Excel terlebih dahulu.';
+    resultEl.textContent = t('energy.pickFile');
     return;
   }
   try {
     const base64 = await fileToBase64(input.files[0]);
     const res = await api.post('/api/energy/import', { file: base64 });
-    const lines = [`Monthly: ${res.monthly} baris`, `Departments: ${res.departments} baris`];
-    if (res.errors.length) lines.push(...res.errors);
+    const lines = [t('energy.importMonthly', { n: res.monthly }), t('energy.importDepts', { n: res.departments })];
+    if (res.errors.length) lines.push(...res.errors.map((line) => tx(line)));
     resultEl.textContent = lines.join('\n');
     await load();
   } catch (err) {
@@ -124,15 +122,13 @@ function saveEnergy() {
     note: $('eNoteSave').value || null
   };
   api.post('/api/energy/monthly', body).then(() => {
-    toast('Data energi tersimpan');
+    toast(t('energy.saved'));
     load();
   }).catch((err) => toast(err.message));
 }
 
 export async function load() {
   const d = await api.get('/api/energy');
-  const months = MONTHS;
-
   const cur = d.current || {};
   const prev = d.previous || {};
   if (cur.electricity_kwh) {
@@ -145,21 +141,21 @@ export async function load() {
   const cost = (cur.electricity_kwh || 0) * (s.tarif_listrik || 0) + (cur.gas_m3 || 0) * (s.harga_gas || 0) + (cur.water_m3 || 0) * (s.harga_air || 0);
   // YoY hanya muncul bila ada data bulan yang sama tahun sebelumnya.
   const yoyVariant = delta.yoyPct !== null && delta.yoyPct !== undefined
-    ? [{ num: `${delta.yoyPct >= 0 ? '+' : ''}${fmtNum(delta.yoyPct)}%`, lbl: `vs ${delta.yoyLabel || 'tahun lalu'} (YoY)` }]
+    ? [{ num: `${delta.yoyPct >= 0 ? '+' : ''}${fmtNum(delta.yoyPct)}%`, lbl: t('energy.kpi.yoy', { label: localizeMonthText(delta.yoyLabel) || t('energy.kpi.yoyFallback') }) }]
     : [];
 
   renderStats('energyStats', [
-    { num: fmtNum(cur.electricity_kwh || 0), lbl: `kWh Listrik ${months[cur.month] || ''}`, cycle: [
-      { num: fmtNum(cur.electricity_kwh || 0), lbl: 'kWh Listrik' },
-      { num: `${((cur.electricity_kwh || 0) / 1000).toFixed(1)} MWh`, lbl: 'Mega Watt hour' },
-      { num: `Rp ${fmtNum(Math.round((cur.electricity_kwh || 0) * (s.tarif_listrik || 0)))}`, lbl: 'Biaya Listrik' },
+    { num: fmtNum(cur.electricity_kwh || 0), lbl: t('energy.kpi.kwhMonth', { month: monthLabel(cur.month) || '' }), cycle: [
+      { num: fmtNum(cur.electricity_kwh || 0), lbl: t('home.kpi.kwh') },
+      { num: `${((cur.electricity_kwh || 0) / 1000).toFixed(1)} MWh`, lbl: t('home.kpi.mwh') },
+      { num: `Rp ${fmtNum(Math.round((cur.electricity_kwh || 0) * (s.tarif_listrik || 0)))}`, lbl: t('home.kpi.cost') },
       ...yoyVariant
     ]},
-    { num: fmtNum(cur.gas_m3 || 0), lbl: 'MMbtu Gas Alam' },
-    { num: fmtNum(cur.water_m3 || 0), lbl: 'm³ Air', color: 'blue' },
-    { num: `Rp ${fmtNum(Math.round(cost / 1e6))} Jt`, lbl: 'Estimasi Total Biaya', color: 'green', cycle: [
-      { num: `Rp ${fmtNum(Math.round(cost / 1e6))} Jt`, lbl: 'Estimasi Total Biaya' },
-      { num: `${fmtNum(delta.co2 || 0)} ton`, lbl: 'Estimasi Emisi CO₂ (listrik)' }
+    { num: fmtNum(cur.gas_m3 || 0), lbl: t('energy.kpi.gas') },
+    { num: fmtNum(cur.water_m3 || 0), lbl: t('energy.kpi.water'), color: 'blue' },
+    { num: `Rp ${fmtNum(Math.round(cost / 1e6))} ${t('energy.unit.mio')}`, lbl: t('energy.kpi.cost'), color: 'green', cycle: [
+      { num: `Rp ${fmtNum(Math.round(cost / 1e6))} ${t('energy.unit.mio')}`, lbl: t('energy.kpi.cost') },
+      { num: `${fmtNum(delta.co2 || 0)} ton`, lbl: t('energy.kpi.co2') }
     ]}
   ]);
 
@@ -173,20 +169,20 @@ export async function load() {
     const options = (d.deptMonths || [])
       .map((m) => `<option value="${esc(m)}"${m === selected ? ' selected' : ''}>${esc(m)}</option>`)
       .join('');
-    deptMonthSel.innerHTML = `<option value="">Semua</option>${options}`;
+    deptMonthSel.innerHTML = `<option value="">${esc(t('energy.all'))}</option>${options}`;
   }
 
   renderInto(
     'deptTable',
     table(
-      ['Departemen', 'kWh', 'Porsi', 'vs prev', 'Aksi'],
+      [t('energy.col.dept'), 'kWh', t('energy.col.share'), t('energy.col.vsPrev'), t('energy.col.action')],
       (d.departments || []).map((r) =>
         row([r.department, fmtNum(r.kwh), `${r.share_pct || '-'}%`, `${r.vs_prev_pct || '-'}%`, actionsCell('energy_departments', r)]).__html
       ),
-      { empty: 'Belum ada data departemen.' }
+      { empty: t('energy.deptEmpty') }
     )
   );
-  renderInto('deptAdd', addButton('energy_departments', 'Tambah Departemen'));
+  renderInto('deptAdd', addButton('energy_departments', t('energy.addDept')));
 
   const ytd = (d.active || []).reduce(
     (a, r) => ({ k: a.k + r.electricity_kwh, g: a.g + r.gas_m3, w: a.w + r.water_m3 }),
@@ -199,7 +195,7 @@ export async function load() {
   renderInto(
     'monthTable',
     table(
-      ['Bulan', 'Listrik (kWh)', 'vs Thn Lalu', 'Gas (MMbtu)', 'Air (m³)', 'Aksi'],
+      [t('energy.col.month'), t('energy.col.kwh'), t('energy.col.yoy'), t('energy.col.gas'), t('energy.col.water'), t('energy.col.action')],
       (d.monthly || []).map((r) => {
         const highlighted = r.id === cur.id;
         const last = kwhLastYear.get(r.month);
@@ -215,7 +211,7 @@ export async function load() {
           <td>${fmtNum(r.water_m3)}</td>
           <td>${actionsCell('energy_monthly', r).__html}</td>
         </tr>`;
-      }).concat([`<tr style="background:#f0fdf4"><td><b>YTD TOTAL</b></td><td><b>${fmtNum(Math.round(ytd.k))}</b></td><td></td><td><b>${fmtNum(ytd.g)}</b></td><td><b>${fmtNum(ytd.w)}</b></td><td></td></tr>`])
+      }).concat([`<tr style="background:#f0fdf4"><td><b>${esc(t('energy.ytd'))}</b></td><td><b>${fmtNum(Math.round(ytd.k))}</b></td><td></td><td><b>${fmtNum(ytd.g)}</b></td><td><b>${fmtNum(ytd.w)}</b></td><td></td></tr>`])
     )
   );
 
@@ -250,7 +246,7 @@ async function loadLocations(month) {
       const rows = (d.locations || []).filter((r) => r.source === source);
       if (!rows.length) return '';
       return `<p class="small" style="margin:8px 0 4px"><b>${caption}</b></p>` + table(
-        ['Lokasi / Meter', 'Pemakaian', 'vs Bulan Lalu'],
+        [t('energy.loc.col.meter'), t('energy.loc.col.use'), t('energy.loc.col.vs')],
         rows.map((r) => row([
           html(esc(r.location) + (r.department && r.source === 'listrik' ? ` <span class="small">(${esc(r.department)})</span>` : '')),
           `${fmtNum(Math.round(r.qty * 10) / 10)} ${r.source === 'listrik' ? 'kWh' : 'm³'}`,
@@ -259,8 +255,8 @@ async function loadLocations(month) {
       ).__html;
     };
     renderInto('locTable', html(
-      makeTable('listrik', 'Listrik (kWh)') + makeTable('air', 'Air (m³)') ||
-      '<p class="small">Belum ada data lokasi. Import file Energy Report untuk mengisinya.</p>'
+      makeTable('listrik', t('energy.loc.power')) + makeTable('air', t('energy.loc.water')) ||
+      `<p class="small">${esc(t('energy.loc.empty'))}</p>`
     ));
   } catch (err) {
     toast(err.message);
@@ -278,7 +274,7 @@ async function saveFuel() {
       unit: $('funit').value || 'liter',
       note: $('fnote').value || ''
     });
-    toastOk('Pemakaian bahan bakar tersimpan.');
+    toastOk(t('energy.fuelSaved'));
     await loadFuels();
   } catch (err) {
     toast(err.message);
@@ -294,7 +290,7 @@ async function loadFuels() {
     renderInto(
       'fuelTable',
       table(
-        ['Bulan', 'Jenis', 'Jumlah', 'Catatan', 'Aksi'],
+        [t('energy.col.month'), t('energy.col.fuel'), t('energy.col.amount'), t('energy.col.note'), t('energy.col.action')],
         (rows || []).slice(0, 30).map((r) =>
           row([
             `${monthLabel(r.month)} ${r.year}`,
@@ -304,10 +300,10 @@ async function loadFuels() {
             actionsCell('energy_fuels', r)
           ])
         ),
-        { empty: 'Belum ada pemakaian bahan bakar tercatat.' }
+        { empty: t('energy.fuelEmpty') }
       )
     );
-    renderInto('fuelAdd', addButton('energy_fuels', 'Tambah Bahan Bakar'));
+    renderInto('fuelAdd', addButton('energy_fuels', t('energy.addFuel')));
   } catch (err) {
     toast(err.message);
   }
@@ -316,7 +312,7 @@ async function loadFuels() {
 /* ===== Generate laporan Excel sesuai format Energy Report ===== */
 async function downloadReport() {
   try {
-    toast('Menyiapkan laporan Excel…');
+    toast(t('energy.exportPrep'));
     const res = await api.get('/api/energy/report-export');
     const binary = atob(res.data);
     const bytes = new Uint8Array(binary.length);
@@ -351,9 +347,9 @@ export function mount() {
           renderInto(
             'deptTable',
             table(
-              ['Departemen', 'kWh', 'Porsi', 'vs prev', 'Aksi'],
+              [t('energy.col.dept'), 'kWh', t('energy.col.share'), t('energy.col.vsPrev'), t('energy.col.action')],
               (d.departments || []).map((r) => row([r.department, fmtNum(r.kwh), `${r.share_pct || '-'}%`, `${r.vs_prev_pct || '-'}%`, actionsCell('energy_departments', r)]).__html),
-              { empty: 'Belum ada data departemen.' }
+              { empty: t('energy.deptEmpty') }
             )
           );
         })

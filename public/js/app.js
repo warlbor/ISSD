@@ -3,6 +3,7 @@
 import { api, meta, currentUser, token } from './api.js';
 import { $, $$, toastErr } from './ui.js';
 import { initCrud, setMeta } from './crud.js';
+import { t, initI18n, onLangChange, localeTag } from './i18n.js';
 
 import * as home from './pages/home.js';
 import * as energy from './pages/energy.js';
@@ -18,6 +19,7 @@ const pages = { home, energy, safety, ga, it, facility, report, settings, ai };
 let currentId = 'home';
 let appReady = false;
 let publicMode = false;
+let previewMode = false;
 
 /* Halaman yang boleh dibuka tanpa login. */
 const PUBLIC_PAGES = new Set(['home', 'it']);
@@ -31,7 +33,7 @@ function applyModeStyles() {
   });
   const badge = $('userBadge');
   if (badge && publicMode) {
-    badge.textContent = 'Tamu';
+    badge.textContent = t('chrome.guest');
     const av = $('userAvatar');
     if (av) av.textContent = '👤';
   }
@@ -41,16 +43,17 @@ function setDateInfo() {
   const now = new Date();
   const el = $('today');
   if (el) {
+    const loc = localeTag();
     el.textContent =
-      now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) +
-      ' · ' + now.toLocaleTimeString('id-ID').slice(0, 5);
+      now.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) +
+      ' · ' + now.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
   }
 }
 
 export function show(id) {
   // Di mode publik, halaman selain dashboard & tiket IT diblokir.
   if (publicMode && !PUBLIC_PAGES.has(id)) {
-    toastErr('Silakan login sebagai staff untuk membuka halaman ini.');
+    toastErr(t('app.needStaff'));
     showGate();
     return;
   }
@@ -79,7 +82,7 @@ async function loadCurrent() {
       await p.loadPublic();
     } catch (err) {
       console.error(err);
-      toastErr('Tidak bisa memuat data. Server mungkin sedang sibuk.');
+      toastErr(t('app.loadFail'));
     }
     return;
   }
@@ -88,7 +91,7 @@ async function loadCurrent() {
       await p.load();
     } catch (err) {
       console.error(err);
-      toastErr('Tidak bisa memuat data. Server mungkin sedang sibuk.');
+      toastErr(t('app.loadFail'));
     }
   }
 }
@@ -142,7 +145,8 @@ function wireLoginGate() {
     e.preventDefault();
     const btn = $('loginBtn');
     btn.disabled = true;
-    btn.textContent = 'Memeriksa…';
+    btn.dataset.i18n = 'login.checking';
+    btn.textContent = t('login.checking');
     $('loginMsg').textContent = '';
     try {
       await api.login($('loginUser').value.trim(), $('loginPass').value);
@@ -152,7 +156,8 @@ function wireLoginGate() {
       $('loginMsg').textContent = err.message;
     } finally {
       btn.disabled = false;
-      btn.textContent = 'Masuk';
+      btn.dataset.i18n = 'login.submit';
+      btn.textContent = t('login.submit');
     }
   });
 }
@@ -172,7 +177,7 @@ async function initApp() {
   }
   const roleEl = $('userRole');
   if (roleEl && user) {
-    roleEl.textContent = user.role === 'admin' ? 'Admin' : 'Staff';
+    roleEl.textContent = user.role === 'admin' ? t('role.admin') : t('role.staff');
   }
   const av = $('userAvatar');
   if (av && user) {
@@ -203,7 +208,7 @@ async function initApp() {
     show(pages[target] ? target : 'home');
   } catch (err) {
     console.error(err);
-    toastErr('Server belum merespons. Jalankan npm start lalu refresh halaman.');
+    toastErr(t('app.serverDown'));
   }
 }
 
@@ -219,17 +224,25 @@ async function initPublicApp() {
 }
 
 /* Halaman GitHub Pages: tampilkan dashboard lengkap dari snapshot, tanpa localhost. */
+function applyPreviewChrome() {
+  const live = document.querySelector('.badge [data-i18n]');
+  if (live) {
+    live.setAttribute('data-i18n', 'chrome.previewBadge');
+    live.textContent = t('chrome.previewBadge');
+  }
+  const hdr = $('hdrUser');
+  if (hdr) hdr.textContent = t('chrome.previewUser');
+  const hdrAv = $('hdrAvatar');
+  if (hdrAv) hdrAv.textContent = t('chrome.previewUser').charAt(0).toUpperCase();
+  const name = $('userBadge');
+  if (name) name.textContent = t('chrome.previewUser');
+}
+
 async function initPreview() {
+  previewMode = true;
   publicMode = false;
   applyModeStyles();
-  const badge = document.querySelector('.badge');
-  if (badge) badge.innerHTML = '<span class="live-dot"></span>PRATINJAU';
-  const hdr = $('hdrUser');
-  if (hdr) hdr.textContent = 'Pratinjau';
-  const hdrAv = $('hdrAvatar');
-  if (hdrAv) hdrAv.textContent = 'P';
-  const name = $('userBadge');
-  if (name) name.textContent = 'Pratinjau';
+  applyPreviewChrome();
   setDateInfo();
   wireNav();
   try {
@@ -244,11 +257,25 @@ async function initPreview() {
     show(pages[target] ? target : 'home');
   } catch (err) {
     console.error(err);
-    toastErr('Data pratinjau tidak bisa dimuat.');
+    toastErr(t('app.previewFail'));
   }
 }
 
+function refreshForLang() {
+  setDateInfo();
+  if (previewMode) applyPreviewChrome();
+  else if (publicMode) applyModeStyles();
+  else {
+    const user = currentUser();
+    const roleEl = $('userRole');
+    if (roleEl && user) roleEl.textContent = user.role === 'admin' ? t('role.admin') : t('role.staff');
+  }
+  if (appReady || publicMode || previewMode) loadCurrent();
+}
+
 async function boot() {
+  initI18n();
+  onLangChange(refreshForLang);
   wireLoginGate();
   if (location.hostname.endsWith('github.io')) {
     hideGate();
@@ -259,7 +286,7 @@ async function boot() {
     if (publicMode) return;
     publicMode = true;
     applyModeStyles();
-    showGate('Sesi habis. Silakan login lagi.');
+    showGate(t('login.sessionExpired'));
   });
 
   if (token()) {

@@ -1,6 +1,8 @@
 /* Komponen UI dasar. Semua teks dari database di-escape lewat esc() sebelum
    masuk innerHTML, karena isinya sekarang bisa diketik pengguna lain di jaringan. */
 
+import { t, localeTag, monthName } from './i18n.js';
+
 export const $ = (id) => document.getElementById(id);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
@@ -18,11 +20,10 @@ export function esc(value) {
 export const html = (s) => ({ __html: String(s) });
 export const isHtml = (c) => c !== null && typeof c === 'object' && '__html' in c;
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-export const monthLabel = (m) => MONTHS[Number(m) - 1] || `Bln ${m}`;
+export const monthLabel = (m) => monthName(m);
 
 export function fmtNum(n) {
-  return Number(n || 0).toLocaleString('id-ID');
+  return Number(n || 0).toLocaleString(localeTag());
 }
 
 export function rupiah(n) {
@@ -95,8 +96,8 @@ function cellHtml(cell) {
     // Sel html() tetap harus dibungkus <td> — kecuali isinya sudah berupa
     // <td>/<th> utuh (mis. actionsCell/statusPicker). Tanpa ini, isi sel
     // "terfosfor" keluar tabel oleh parser HTML dan tabelnya hancur.
-    const t = cell.__html.trimStart().toLowerCase();
-    return t.startsWith('<td') || t.startsWith('<th') ? cell.__html : `<td>${cell.__html}</td>`;
+    const raw = cell.__html.trimStart().toLowerCase();
+    return raw.startsWith('<td') || raw.startsWith('<th') ? cell.__html : `<td>${cell.__html}</td>`;
   }
   if (Array.isArray(cell)) return cell.map(cellHtml).join('');
   return `<td>${esc(cell)}</td>`;
@@ -117,7 +118,7 @@ export function td(cell) {
 export function table(headers, rows, opts = {}) {
   const body = rows.filter(Boolean);
   if (!body.length) {
-    return html(`<p class="small empty">${esc(opts.empty || 'Belum ada data tersimpan.')}</p>`);
+    return html(`<p class="small empty">${esc(opts.empty || t('empty.stored'))}</p>`);
   }
   const head = `<tr>${headers
     .map((h, i) => `<th${opts.align && opts.align[i] ? ` class="ta-${opts.align[i]}"` : ''}>${esc(h)}</th>`)
@@ -137,10 +138,10 @@ export function kpiBoxes(items) {
           return `<div class="stat-box is-empty">
             <div class="stat-num">—</div>
             <div class="stat-lbl">${esc(it.lbl)}</div>
-            <div class="stat-note">Belum ada data</div>
+            <div class="stat-note">${esc(t('empty.kpi'))}</div>
           </div>`;
         }
-        const cycle = it.cycle ? `<span class="cycle-hint">⟳ klik</span>` : '';
+        const cycle = it.cycle ? `<span class="cycle-hint">${esc(t('kpi.cycle'))}</span>` : '';
         const attrs = it.cycle ? ` data-cycle='${esc(JSON.stringify(it.cycle))}'` : '';
         return `<div class="stat-box${it.cycle ? ' energy-cycle' : ''}"${attrs}>
           ${cycle}
@@ -225,13 +226,13 @@ function ensureModal() {
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <div class="modal-head">
         <h3 id="modalTitle"></h3>
-        <button type="button" class="icon-btn" id="modalClose" aria-label="Tutup">✕</button>
+        <button type="button" class="icon-btn" id="modalClose" data-i18n-aria="modal.close" aria-label="${esc(t('modal.close'))}">✕</button>
       </div>
       <div class="modal-body" id="modalBody"></div>
       <div class="modal-foot">
         <span class="modal-hint" id="modalHint"></span>
-        <button type="button" class="secondary" id="modalCancel">Batal</button>
-        <button type="button" class="success" id="modalSubmit">Simpan</button>
+        <button type="button" class="secondary" id="modalCancel" data-i18n="modal.cancel">${esc(t('modal.cancel'))}</button>
+        <button type="button" class="success" id="modalSubmit">${esc(t('modal.save'))}</button>
       </div>
     </div>`;
   document.body.appendChild(modalEl);
@@ -243,7 +244,7 @@ function fieldInput(f, value) {
   const req = f.required ? ' required' : '';
   const lock = f.disabled ? ' disabled' : '';
   if (f.disabled) {
-    return `<label for="mf_${f.name}">${esc(f.label)} <span class="help">otomatis</span></label>
+    return `<label for="mf_${f.name}">${esc(f.label)} <span class="help">${esc(t('modal.auto'))}</span></label>
       <input type="text" id="mf_${f.name}" name="${esc(f.name)}" value="${esc(v)}" disabled>`;
   }
   switch (f.type) {
@@ -289,8 +290,8 @@ function readForm(form, fields) {
    onSubmit(values) boleh async; error dari onSubmit ditampilkan di dalam modal. */
 export function openForm(opts) {
   const backdrop = ensureModal();
-  $('modalTitle').textContent = opts.title || 'Ubah Data';
-  $('modalSubmit').textContent = opts.submitLabel || 'Simpan';
+  $('modalTitle').textContent = opts.title || t('modal.edit');
+  $('modalSubmit').textContent = opts.submitLabel || t('modal.save');
   $('modalHint').textContent = opts.hint || '';
   $('modalBody').innerHTML = `<form id="modalForm" class="form-grid${opts.wide ? ' wide' : ''}">${opts.fields
     .map((f) => `<div class="fg${f.full ? ' full' : ''}">${fieldInput(f, (opts.values || {})[f.name])}</div>`)
@@ -308,14 +309,14 @@ export function openForm(opts) {
   const run = async () => {
     if (!form.reportValidity()) return;
     submit.disabled = true;
-    submit.textContent = 'Menyimpan…';
+    submit.textContent = t('modal.saving');
     try {
       await opts.onSubmit(readForm(form, opts.fields));
       close();
-      toastOk(opts.doneMessage || 'Tersimpan di database');
+      toastOk(opts.doneMessage || t('modal.saved'));
     } catch (err) {
       submit.disabled = false;
-      submit.textContent = opts.submitLabel || 'Simpan';
+      submit.textContent = opts.submitLabel || t('modal.save');
       toastErr(err.message);
     }
   };
@@ -336,15 +337,15 @@ export function openForm(opts) {
   }, 60);
 }
 
-export function confirmDialog({ title = 'Konfirmasi', message, confirmLabel = 'Hapus', onConfirm }) {
+export function confirmDialog({ title, message, confirmLabel, onConfirm }) {
   const backdrop = ensureModal();
-  $('modalTitle').textContent = title;
+  $('modalTitle').textContent = title || t('modal.confirm');
   $('modalHint').textContent = '';
   $('modalBody').innerHTML = `<p class="confirm-text">${esc(message)}</p>`;
   backdrop.classList.remove('hidden');
   backdrop.classList.add('show');
   const submit = $('modalSubmit');
-  submit.textContent = confirmLabel;
+  submit.textContent = confirmLabel || t('modal.delete');
   submit.className = 'danger-btn';
   const close = () => {
     backdrop.classList.add('hidden');
@@ -375,4 +376,3 @@ export function showResult(id, text) {
   if (el) el.textContent = text;
 }
 
-export { MONTHS };

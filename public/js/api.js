@@ -1,6 +1,8 @@
 /* Pembungkus fetch dengan token login. Sesi diverifikasi server, jadi nama
    pengguna di activity_log tidak bisa dipalsukan dari header bebas. */
 
+import { t, tx } from './i18n.js';
+
 const TOKEN_KEY = 'issd-token';
 const USER_KEY = 'issd-user';
 
@@ -31,13 +33,13 @@ export function isStaticHost() {
   return typeof location !== 'undefined' && /(^|\.)github\.io$/.test(location.hostname);
 }
 
-const STATIC_MSG = 'Ini tampilan untuk dilihat. Perubahan hanya tersimpan di server internal.';
+const staticMsg = () => t('err.previewOnly');
 
 let snapPromise = null;
 function loadSnapshot() {
   if (!snapPromise) {
     snapPromise = fetch(new URL('../snapshot.json', import.meta.url)).then(async (res) => {
-      if (!res.ok) throw new Error('Data pratinjau tidak ditemukan.');
+      if (!res.ok) throw new Error(t('err.previewMissing'));
       return res.json();
     });
   }
@@ -49,17 +51,17 @@ async function snapshotGet(path) {
   if (Object.prototype.hasOwnProperty.call(snap, path)) return snap[path];
   const bare = String(path).split('?')[0];
   if (Object.prototype.hasOwnProperty.call(snap, bare)) return snap[bare];
-  throw new Error('Data ini tidak ada di tampilan publik.');
+  throw new Error(t('err.previewGap'));
 }
 
 async function request(method, path, body) {
   if (isStaticHost()) {
     if (method === 'GET') return snapshotGet(path);
-    throw new Error(STATIC_MSG);
+    throw new Error(staticMsg());
   }
   const headers = {};
-  const t = token();
-  if (t) headers['Authorization'] = `Bearer ${t}`;
+  const authToken = token();
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
   if (body !== undefined) headers['Content-Type'] = 'application/json';
 
   let res;
@@ -70,22 +72,22 @@ async function request(method, path, body) {
       body: body === undefined ? undefined : JSON.stringify(body)
     });
   } catch {
-    throw new Error('Tidak bisa menghubungi server. Jalankan npm start.');
+    throw new Error(t('err.offline'));
   }
 
   if (res.status === 401) {
     clearSession();
     window.dispatchEvent(new CustomEvent('issd:unauthorized'));
-    throw new Error('Sesi berakhir. Silakan login kembali.');
+    throw new Error(t('err.session'));
   }
 
   let data = null;
   try {
     data = await res.json();
   } catch {
-    throw new Error(`Respons server tidak valid (${res.status})`);
+    throw new Error(t('err.badResponse', { status: res.status }));
   }
-  if (!res.ok) throw new Error(data.error || `Permintaan gagal (${res.status})`);
+  if (!res.ok) throw new Error(tx(data.error) || t('err.requestFail', { status: res.status }));
   return data;
 }
 
@@ -103,15 +105,15 @@ export const api = {
     try {
       res = await fetch(path);
     } catch {
-      throw new Error('Tidak bisa menghubungi server. Jalankan npm start.');
+      throw new Error(t('err.offline'));
     }
     let data = null;
     try {
       data = await res.json();
     } catch {
-      throw new Error(`Respons server tidak valid (${res.status})`);
+      throw new Error(t('err.badResponse', { status: res.status }));
     }
-    if (!res.ok) throw new Error(data.error || `Permintaan gagal (${res.status})`);
+    if (!res.ok) throw new Error(tx(data.error) || t('err.requestFail', { status: res.status }));
     return data;
   },
 
@@ -124,15 +126,15 @@ export const api = {
         body: JSON.stringify(body)
     });
     } catch {
-      throw new Error('Tidak bisa menghubungi server. Jalankan npm start.');
+      throw new Error(t('err.offline'));
     }
     let data = null;
     try {
       data = await res.json();
     } catch {
-      throw new Error(`Respons server tidak valid (${res.status})`);
+      throw new Error(t('err.badResponse', { status: res.status }));
     }
-    if (!res.ok) throw new Error(data.error || `Permintaan gagal (${res.status})`);
+    if (!res.ok) throw new Error(tx(data.error) || t('err.requestFail', { status: res.status }));
     return data;
   },
 
@@ -145,18 +147,18 @@ export const api = {
         body: JSON.stringify({ username, password })
       });
     } catch {
-      throw new Error('Tidak bisa menghubungi server. Jalankan npm start.');
+      throw new Error(t('err.offline'));
     }
     const data = await res.json().catch(() => null);
-    if (!res.ok) throw new Error((data && data.error) || 'Login gagal');
+    if (!res.ok) throw new Error(tx(data && data.error) || t('err.loginFail'));
     saveSession(data.token, data.user);
     return data.user;
   },
 
   logout: async () => {
-    const t = token();
+    const authToken = token();
     try {
-      if (t) await fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${t}` } });
+      if (authToken) await fetch('/api/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${authToken}` } });
     } catch {
       /* sesi mungkin sudah hangus di sisi server */
     }
