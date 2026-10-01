@@ -1,23 +1,494 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+  <script>document.write('<base href="' + location.pathname.replace(/[^/]*$/, "") + 'public/">');</script>
   <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="0;url=http://localhost:3000">
-  <title>ISSD — buka via server</title>
-  <style>
-    body { font-family: Segoe UI, sans-serif; background: #0b1220; color: #e2e8f0; display: grid; place-items: center; min-height: 100vh; margin: 0; }
-    .box { max-width: 520px; padding: 28px; background: #122445; border-radius: 16px; line-height: 1.6; }
-    code { background: #0b1220; padding: 2px 6px; border-radius: 6px; }
-    a { color: #7dd3fc; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ISSD — Integrated Site Services Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <div class="box">
-    <h2>ISSD tidak lagi full HTML statis</h2>
-    <p>Jalankan server lalu buka <a href="http://localhost:3000">http://localhost:3000</a>.</p>
-    <p>Di folder proyek:</p>
-    <p><code>npm start</code></p>
-    <p>Data tersimpan di SQLite (<code>data/issd.db</code>).</p>
+<div class="gate hidden" id="loginGate">
+  <form class="gate-card" id="loginForm">
+    <div class="mark">IS</div>
+    <div class="gate-title">ISSD <span>Integrated Site Services Dashboard</span></div>
+    <label for="loginUser">Username</label>
+    <input id="loginUser" autocomplete="username" required autofocus>
+    <label for="loginPass">Password</label>
+    <input id="loginPass" type="password" autocomplete="current-password" required>
+    <button class="success" type="submit" id="loginBtn">Masuk</button>
+    <div class="gate-msg small" id="loginMsg"></div>
+  </form>
+</div>
+
+<header class="header">
+  <div class="brand">
+    <button class="menu-btn" id="menuBtn" type="button" aria-label="Menu">☰</button>
+    <div class="logo">ISSD</div>
   </div>
+  <nav class="side" id="side" aria-label="Menu utama">
+    <div class="side-title">Menu Utama</div>
+    <div class="nav active" data-page="home">Dashboard</div>
+    <div class="nav staff-only" data-page="energy">Energy</div>
+    <div class="nav staff-only" data-page="safety">Safety</div>
+    <div class="nav staff-only" data-page="ga">GA</div>
+    <div class="nav" data-page="it">IT</div>
+    <div class="nav staff-only" data-page="facility">Facility</div>
+    <div class="side-title staff-only">Lainnya</div>
+    <div class="nav staff-only" data-page="report">Laporan</div>
+    <div class="nav staff-only" data-page="settings">Pengaturan</div>
+    <div class="user-box">
+      <div class="user-avatar" id="userAvatar">—</div>
+      <div class="user-info">
+        <div class="user-name" id="userBadge">—</div>
+        <span class="user-role" id="userRole"></span>
+        <span class="small public-only">Mode tamu — data terbatas</span>
+      </div>
+    </div>
+  </nav>
+  <div class="header-right">
+    <span class="date-info" id="today"></span>
+    <span class="badge"><span class="live-dot"></span>LIVE · SQLite</span>
+    <button type="button" class="tiny public-only" id="btnStaffLogin">Login Staff</button>
+    <span class="user-chip auth-only"><span class="chip-avatar" id="hdrAvatar"></span><span class="who" id="hdrUser"></span></span>
+    <button type="button" class="tiny auth-only btn-logout" id="btnLogout">Keluar</button>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- Floating Action Button: pintasan cepat ke AI Assistant, selalu terlihat. -->
+  <button class="fab staff-only" id="aiFab" type="button" data-page="ai" title="AI Assistant" aria-label="AI Assistant">🤖</button>
+
+  <main class="main">
+    <section id="home">
+      <div class="title">Dashboard Ringkasan Site Services</div>
+      <div class="sub">Pandangan terpadu Energy · Safety · GA · IT · Facility — data dari database, bukan HTML statis.</div>
+      <div class="stat-row" id="homeStats"></div>
+      <div class="cards">
+        <div class="card energy" data-page="energy"><div class="icon">⚡</div><div class="ct">Energy</div><div class="cd">Listrik · Gas · Air · Panel Surya · Efisiensi</div></div>
+        <div class="card safety" data-page="safety"><div class="icon">🛡</div><div class="ct">Safety & HSE</div><div class="cd">Insiden · Near Miss · PPE · Inspeksi · Izin Kerja</div></div>
+        <div class="card ga" data-page="ga"><div class="icon">🏢</div><div class="ct">General Affairs</div><div class="cd">Kendaraan · ATK · Resepsionis · Kantor · Catering</div></div>
+        <div class="card it" data-page="it"><div class="icon">💻</div><div class="ct">IT Infrastructure</div><div class="cd">Jaringan · Server · Tiket · Inventaris · Keamanan</div></div>
+        <div class="card facility" data-page="facility"><div class="icon">🔧</div><div class="ct">Facility</div><div class="cd">AC · Plumbing · Lift · Genset · Perawatan Gedung</div></div>
+      </div>
+      <div class="grid staff-only-sec">
+        <div class="panel">
+          <h3>Today's Site Alert</h3>
+          <div id="homeAlerts"></div>
+        </div>
+        <div class="panel">
+          <h3>Konsumsi Listrik 6 Bulan Terakhir (ribu kWh)</h3>
+          <div class="chart-bar" id="energyChart"></div>
+          <div style="height:24px"></div>
+        </div>
+      </div>
+      <div class="grid mt-14 staff-only-sec">
+        <div class="panel">
+          <h3>Tiket & Work Order Terbaru</h3>
+          <div id="homeWOs"></div>
+        </div>
+        <div class="panel">
+          <h3>Target vs Realisasi</h3>
+          <div id="targetList"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="energy" class="hidden">
+      <div class="title">⚡ Energy Management</div>
+      <div class="sub">Pemantauan konsumsi energi dari tabel <b>energy_monthly</b> di SQLite.</div>
+      <div class="panel">
+        <h3>Import Data Energi dari Excel</h3>
+        <p class="small">Upload file Excel (format Energy Report). Sheet <b>Monthly</b> dan <b>Departments</b> akan diimpor.</p>
+        <div class="import-row">
+          <input type="file" id="energyFile" accept=".xlsx,.xls">
+          <button type="button" id="btnImportEnergy" class="btn-import">⬆ Import Excel</button>
+        </div>
+        <div class="grid-3" style="margin-top:10px">
+          <div style="grid-column:1 / -1"><button type="button" id="btnExportReport" class="secondary" style="width:100%">📤 Generate Laporan Excel (format Energy Report)</button></div>
+        </div>
+        <div id="importResult" class="result" style="margin-top:12px"></div>
+      </div>
+      <div class="stat-row" id="energyStats"></div>
+      <div class="panel" style="margin-bottom:16px">
+        <h3>Progres Target Penghematan Listrik</h3>
+        <div id="energyTarget"></div>
+      </div>
+      <div class="grid">
+        <div class="panel">
+          <div class="flex-between">
+            <h3>Pemakaian per Lokasi / Meter</h3>
+            <select id="locMonth" class="small-select"></select>
+          </div>
+          <p class="small">Selisih pemakaian vs bulan sebelumnya per titik ukur. ▲ naik · ▼ turun.</p>
+          <div id="locTable"></div>
+        </div>
+        <div class="panel">
+          <div class="flex-between">
+            <h3>Bahan Bakar (Solar, Petrol, dll.)</h3>
+          </div>
+          <div class="grid-3">
+            <div><label>Tahun</label><input id="fy" type="number"></div>
+            <div><label>Bulan (1–12)</label><input id="fm" type="number" min="1" max="12"></div>
+            <div><label>Jenis</label>
+              <select id="ftype">
+                <option>Solar (HSD)</option>
+                <option>Petrol</option>
+                <option>Lainnya</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid-3">
+            <div><label>Jumlah</label><input id="fqty" type="number" value="0"></div>
+            <div><label>Satuan</label><input id="funit" value="liter"></div>
+            <div><label>Catatan</label><input id="fnote" placeholder="opsional"></div>
+          </div>
+          <button class="success" type="button" id="btnSaveFuel">Simpan Bahan Bakar</button>
+          <div class="mt-14" id="fuelTable"></div>
+          <div class="mt-8" id="fuelAdd"></div>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="panel">
+          <h3>Kalkulator Analisis Konsumsi Energi</h3>
+          <div class="tabs">
+            <button class="tab active" type="button" data-etab="0">Listrik</button>
+            <button class="tab" type="button" data-etab="1">Gas Alam</button>
+            <button class="tab" type="button" data-etab="2">Efisiensi & Air</button>
+          </div>
+          <div id="et0">
+            <label>Pemakaian Listrik (kWh)</label><input id="ekwh" type="number" placeholder="isi dari data bulan ini">
+            <label>Baseline Bulan Lalu (kWh)</label><input id="ebase" type="number" placeholder="bulan lalu">
+            <label>Tarif per kWh (Rp)</label><input id="etarif" type="number" value="1467">
+            <button type="button" id="btnListrik">Hitung Analisis</button>
+            <div id="eRes" class="result"></div>
+          </div>
+          <div id="et1" class="hidden">
+            <label>Pemakaian Gas (MMbtu)</label><input id="gas1" type="number" placeholder="MMbtu bulan ini">
+            <label>Harga Gas per MMbtu (Rp)</label><input id="gas2" type="number" value="9500">
+            <label>Konversi (MWh per MMbtu)</label><input id="gas3" type="number" value="0.2931" step="0.0001">
+            <button type="button" id="btnGas">Hitung</button>
+            <div id="eRes2" class="result"></div>
+          </div>
+          <div id="et2" class="hidden">
+            <label>Konsumsi Awal</label><input id="eff1" type="number" placeholder="konsumsi awal">
+            <label>Konsumsi Setelah Perbaikan</label><input id="eff2" type="number" placeholder="setelah perbaikan">
+            <label>Volume Aktivitas</label><input id="eff3" type="number" placeholder="volume aktivitas">
+            <button type="button" id="btnEff">Hitung Efisiensi</button>
+            <div id="eRes3" class="result"></div>
+          </div>
+          <div class="mt-14">
+            <h3>Simpan / Perbarui Data Bulanan</h3>
+            <div class="grid-3">
+              <div><label>Tahun</label><input id="ey" type="number" value="2026"></div>
+              <div><label>Bulan (1–12)</label><input id="em" type="number" value="9" min="1" max="12"></div>
+              <div><label>Listrik kWh</label><input id="eKwhSave" type="number" value="0"></div>
+            </div>
+            <div class="grid-3">
+              <div><label>Gas (MMbtu)</label><input id="eGasSave" type="number" value="0"></div>
+              <div><label>Air m³</label><input id="eWaterSave" type="number" value="0"></div>
+              <div><label>Catatan</label><input id="eNoteSave" placeholder="opsional"></div>
+            </div>
+            <button class="success" type="button" id="btnSaveEnergy">Simpan ke Database</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="flex-between">
+            <h3>Pembagian Konsumsi per Departemen</h3>
+            <select id="deptMonth" class="small-select"></select>
+          </div>
+          <div id="deptTable"></div>
+          <div class="mt-8" id="deptAdd"></div>
+          <div class="mt-14">
+            <h3>Rekap Bulanan</h3>
+            <div id="monthTable"></div>
+            <p class="small mt-8">Jan 2026 ditandai sebagai pembacaan meter kumulatif (zero reset) dan tidak ikut dalam tren.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="safety" class="hidden">
+      <div class="title">🛡 Safety & HSE</div>
+      <div class="sub">Inspeksi dan KPI safety tersimpan di database.</div>
+      <div class="stat-row" id="safetyStats"></div>
+      <div class="grid">
+        <div class="panel">
+          <h3>Analisis Risiko Pekerjaan (JSA)</h3>
+          <label>Jenis Pekerjaan</label>
+          <select id="sJob">
+            <option value="hotwork">Hot Work (Welding, Grinding, Cutting)</option>
+            <option value="workheight">Bekerja di Ketinggian (≥ 2 m)</option>
+            <option value="confined">Confined Space</option>
+            <option value="electrical">Pekerjaan Listrik</option>
+            <option value="lifting">Lifting / Rigging</option>
+            <option value="lain">Pekerjaan Lainnya</option>
+          </select>
+          <label>Lokasi & Kondisi</label>
+          <textarea id="sDesc" rows="4" placeholder="Contoh: Welding di area pipa LPG..."></textarea>
+          <label>Jumlah Pekerja</label><input id="sPekerja" type="number" value="2">
+          <label>Peralatan</label><input id="sAlat" value="Mesin las, gerinda tangan, APAR 6 kg">
+          <button type="button" id="btnJsa">Generate & Simpan JSA</button>
+          <div id="sRes" class="result"></div>
+        </div>
+        <div class="panel">
+          <div class="flex-between"><h3>Inspeksi Safety Terbaru</h3></div>
+          <div id="inspTable"></div>
+          <div class="mt-8" id="inspAdd"></div>
+          <div class="mt-14" id="safetyKpiList"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="ga" class="hidden">
+      <div class="title">🏢 General Affairs (GA)</div>
+      <div class="sub">Peminjaman kendaraan tersimpan permanen di SQLite.</div>
+      <div class="stat-row" id="gaStats"></div>
+      <div class="grid">
+        <div class="panel">
+          <h3>Form Peminjaman Kendaraan</h3>
+          <label>Nama Peminjam & Departemen</label>
+          <input id="gNama" placeholder="Budi Santoso — Dept. Production">
+          <label>Tanggal & Jam Pakai</label><input id="gTgl" type="datetime-local">
+          <label>Tujuan</label><textarea id="gTujuan" rows="2"></textarea>
+          <label>Jenis Kendaraan</label>
+          <select id="gMobil">
+            <option>Pick Up (Barang) — B 1234 XYZ</option>
+            <option>Avanza (Penumpang) — B 5678 ABC</option>
+            <option>APV (6 Penumpang) — B 9012 DEF</option>
+            <option>Box Truck 4 Roda — B 3456 GHI</option>
+          </select>
+          <label>Supir</label>
+          <select id="gSupir">
+            <option>Tidak Pakai Supir (Self Drive)</option>
+            <option>Ahmad (SIM A)</option>
+            <option>Soleh (SIM A/B1)</option>
+            <option>Joko (SIM B2)</option>
+          </select>
+          <label>Estimasi Kilometer</label><input id="gKm" type="number" value="80">
+          <button class="success" type="button" id="btnPinjam">Ajukan & Simpan</button>
+          <div id="gRes" class="result"></div>
+        </div>
+        <div class="panel">
+          <h3>Stok ATK Kritis</h3>
+          <div id="atkTable"></div>
+          <div class="mt-8" id="atkAdd"></div>
+          <div class="mt-14">
+            <h3>Riwayat Peminjaman</h3>
+            <div id="bookTable"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="it" class="hidden">
+      <div class="title">💻 IT Infrastructure & Helpdesk</div>
+      <div class="sub">Tiket helpdesk tersimpan di tabel it_tickets.</div>
+      <div class="stat-row" id="itStats"></div>
+      <div class="grid">
+        <div class="panel public-form">
+          <h3>Laporkan Masalah IT</h3>
+          <p class="small">Tidak bisa login? Laporkan masalah IT Anda di sini. Tim IT akan menindaklanjuti.</p>
+          <label>Nama Anda</label>
+          <input id="pubUser" placeholder="Nama lengkap & departemen" maxlength="100">
+          <label>Kategori</label>
+          <select id="pubCat">
+            <option value="net">Tidak bisa akses Internet / Jaringan</option>
+            <option value="email">Email tidak bisa send/receive</option>
+            <option value="wifi">WiFi connect tapi tidak ada internet</option>
+            <option value="print">Printer tidak bisa mencetak</option>
+            <option value="vpn">Akses VPN gagal</option>
+            <option value="slow">Komputer / Aplikasi lambat</option>
+            <option value="pw">Lupa password / akun terkunci</option>
+            <option value="other">Lainnya</option>
+          </select>
+          <label>Uraian Masalah</label>
+          <textarea id="pubIssue" rows="4" placeholder="Jelaskan keluhan Anda…" maxlength="2000"></textarea>
+          <label>Hostname / Komputer (opsional)</label>
+          <input id="pubHost" placeholder="mis. PC-PROD-087" maxlength="200">
+          <div class="captcha-row">
+            <label for="pubCaptcha">Pertanyaan keamanan: <b id="captchaQuestion">—</b></label>
+            <input id="pubCaptcha" placeholder="jawaban" autocomplete="off">
+            <button type="button" class="tiny" id="btnRefreshCaptcha">↻ Ganti</button>
+          </div>
+          <input type="hidden" id="captchaToken">
+          <button class="success" type="button" id="btnPubTicket">Kirim Laporan</button>
+          <div id="pubRes" class="result"></div>
+        </div>
+        <div class="panel staff-only-col">
+          <h3>Troubleshooting AI + Tiket</h3>
+          <label>Kategori</label>
+          <select id="iCat">
+            <option value="net">Tidak bisa akses Internet / Jaringan</option>
+            <option value="email">Email tidak bisa send/receive</option>
+            <option value="wifi">WiFi connect tapi tidak ada internet</option>
+            <option value="print">Printer tidak bisa mencetak</option>
+            <option value="vpn">Akses VPN gagal</option>
+            <option value="slow">Komputer / Aplikasi lambat</option>
+            <option value="pw">Lupa password / akun terkunci</option>
+          </select>
+          <label>Gejala</label>
+          <textarea id="iProb" rows="4"></textarea>
+          <label>Nama User</label><input id="iUser" placeholder="Nama pelapor">
+          <label>Hostname</label><input id="iHost" value="PC-PROD-087 — Windows 11">
+          <button type="button" id="btnIt">Diagnosa</button>
+          <button class="success" type="button" id="btnTicket">Buat Tiket ke Database</button>
+          <div id="iRes" class="result"></div>
+        </div>
+        <div class="panel staff-only-col">
+          <h3>Kondisi Infrastruktur</h3>
+          <div id="infraList"></div>
+          <div class="mt-14">
+            <h3>Tiket Helpdesk</h3>
+            <div id="ticketTable"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="facility" class="hidden">
+      <div class="title">🔧 Facility Management</div>
+      <div class="sub">Work order fasilitas tersimpan dan muncul di dashboard.</div>
+      <div class="stat-row" id="facStats"></div>
+      <div class="grid">
+        <div class="panel">
+          <h3>Monitoring AC & Work Order</h3>
+          <div class="tabs">
+            <button class="tab active" type="button" data-ftab="0">Kalkulasi Beban AC</button>
+            <button class="tab" type="button" data-ftab="1">Form Work Order</button>
+          </div>
+          <div id="ft0">
+            <label>Panjang (m)</label><input id="fP" type="number" value="8">
+            <label>Lebar (m)</label><input id="fL" type="number" value="6">
+            <label>Tinggi (m)</label><input id="fT" type="number" value="3">
+            <label>Jumlah Orang</label><input id="fO" type="number" value="12">
+            <label>Peralatan</label>
+            <select id="fEquip">
+              <option value="ringan">Ringan</option>
+              <option value="sedang" selected>Sedang</option>
+              <option value="bersat">Berat</option>
+            </select>
+            <label>Sinar Matahari</label>
+            <select id="fSun">
+              <option>Terbuka (banyak jendela)</option>
+              <option selected>Normal (sebagian tertutup)</option>
+              <option>Tertutup (tanpa jendela)</option>
+            </select>
+            <button type="button" id="btnAC">Hitung Kebutuhan PK</button>
+            <div id="fRes" class="result"></div>
+          </div>
+          <div id="ft1" class="hidden">
+            <label>Lokasi</label><input id="fLoc" placeholder="Lantai 2 — Ruang Rapat Merah">
+            <label>Jenis Masalah</label>
+            <select id="fMasalah">
+              <option>AC Tidak Dingin / Bocor</option>
+              <option>Lampu Mati / Kelistrikan</option>
+              <option>Plumbing (Toilet / Keran / Air)</option>
+              <option>Lift / Escalator</option>
+              <option>Pintu / Jendela / Furniture</option>
+              <option>Kebersihan / Kebun</option>
+              <option>Lainnya</option>
+            </select>
+            <label>Detail</label><textarea id="fWO" rows="4"></textarea>
+            <label>Pelapor</label><input id="fPelapor" placeholder="Nama & Nomor HP">
+            <label>Urgensi</label>
+            <select id="fUrgensi">
+              <option>Rendah</option>
+              <option selected>Sedang</option>
+              <option>Tinggi</option>
+            </select>
+            <button class="success" type="button" id="btnWO">Buat Work Order</button>
+            <div id="fRes2" class="result"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Jadwal Preventive Maintenance</h3>
+          <div id="pmTable"></div>
+          <div class="mt-8" id="pmAdd"></div>
+        </div>
+      </div>
+      <div class="grid mt-14">
+        <div class="panel">
+          <h3>Work Order Fasilitas</h3>
+          <div id="facWoTable"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="report" class="hidden">
+      <div class="title">📊 Laporan & Summary</div>
+      <div class="sub">Rekap dari database sesuai periode yang dipilih.</div>
+      <div class="panel">
+        <h3>Filter Laporan</h3>
+        <div class="grid-3">
+          <div><label>Periode Awal</label><input id="rFrom" type="month" value="2026-01"></div>
+          <div><label>Periode Akhir</label><input id="rTo" type="month" value="2026-12"></div>
+          <div><label> </label><button type="button" id="btnReport" style="margin-top:22px">Generate dari Database</button></div>
+        </div>
+        <div id="reportRes" class="result">Pilih periode lalu tekan Generate.</div>
+      </div>
+    </section>
+
+    <section id="ai" class="hidden">
+      <div class="title">🤖 AI Assistant ISSD</div>
+      <div class="sub">Tanyakan apa saja tentang data ISSD — dijawab otomatis dari data terkini.</div>
+      <div class="panel">
+        <h3>Percakapan</h3>
+        <label>Modul Fokus</label>
+        <select id="aiModul">
+          <option value="semua">Semua Modul</option>
+          <option value="energy">Energy</option>
+          <option value="safety">Safety & HSE</option>
+          <option value="ga">General Affairs</option>
+          <option value="it">IT</option>
+          <option value="facility">Facility</option>
+        </select>
+        <label>Pertanyaan</label>
+        <textarea id="aiQ" rows="5"></textarea>
+        <button class="success" type="button" id="btnAi">Kirim</button>
+        <button class="secondary" type="button" id="btnAiClear">Bersihkan</button>
+        <div id="aiRes" class="result"></div>
+      </div>
+      <div class="panel mt-14">
+        <h3>Riwayat Pertanyaan</h3>
+        <div id="aiHistory"></div>
+      </div>
+    </section>
+
+    <section id="settings" class="hidden">
+      <div class="title">⚙ Pengaturan</div>
+      <div class="sub">Tarif, target, KPI, dan infrastruktur IT. Klik nilai untuk mengubah.</div>
+      <div id="settingsContainer" class="settings-grid">
+        <div class="panel">
+          <h3>Tarif & Target</h3>
+          <div id="settingsTable"></div>
+        </div>
+        <div class="panel">
+          <h3>Site KPI</h3>
+          <div id="kpiTable"></div>
+        </div>
+        <div class="panel">
+          <h3>Infrastruktur IT</h3>
+          <div id="infraTable"></div>
+        </div>
+        <div class="panel" id="accountPanel">
+          <h3>Akun Saya</h3>
+          <button type="button" class="tiny" data-act="pwchange">Ganti Password</button>
+          <p class="small mt-8">Password lama diverifikasi dulu. Setelah diganti, perangkat lain diminta login ulang.</p>
+        </div>
+        <div class="panel hidden" id="usersPanel">
+          <h3>Manajemen Pengguna</h3>
+          <div id="usersTable"></div>
+          <div class="mt-8"><button type="button" class="tiny" data-act="addUser">+ Tambah Pengguna</button></div>
+          <p class="small mt-8">Role <b>admin</b> boleh menghapus data dan mengubah pengaturan; <b>staff</b> hanya menambah/mengubah data operasional.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+<script type="module" src="js/app.js"></script>
 </body>
 </html>

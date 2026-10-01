@@ -213,8 +213,42 @@ async function initPublicApp() {
   show(location.hash?.slice(1) === 'it' ? 'it' : 'home');
 }
 
+/* Halaman GitHub Pages: tampilkan dashboard lengkap dari snapshot, tanpa localhost. */
+async function initPreview() {
+  publicMode = false;
+  applyModeStyles();
+  const badge = document.querySelector('.badge');
+  if (badge) badge.innerHTML = '<span class="live-dot"></span>PRATINJAU';
+  const hdr = $('hdrUser');
+  if (hdr) hdr.textContent = 'Pratinjau';
+  const hdrAv = $('hdrAvatar');
+  if (hdrAv) hdrAv.textContent = 'P';
+  const name = $('userBadge');
+  if (name) name.textContent = 'Pratinjau';
+  setDateInfo();
+  wireNav();
+  try {
+    const metaData = await meta();
+    setMeta(metaData);
+    initCrud(() => loadCurrent());
+    for (const p of Object.values(pages)) {
+      if (p.mount) p.mount();
+    }
+    appReady = true;
+    const target = location.hash?.slice(1);
+    show(pages[target] ? target : 'home');
+  } catch (err) {
+    console.error(err);
+    toastErr('Data pratinjau tidak bisa dimuat.');
+  }
+}
+
 async function boot() {
   wireLoginGate();
+  if (location.hostname.endsWith('github.io')) {
+    hideGate();
+    return initPreview();
+  }
   window.addEventListener('issd:unauthorized', () => {
     // Endpoint publik tidak mengirim 401, jadi ini selalu berarti sesi staff habis.
     if (publicMode) return;

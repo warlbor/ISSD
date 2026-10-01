@@ -26,7 +26,37 @@ export function clearSession() {
   localStorage.removeItem(USER_KEY);
 }
 
+/* GitHub Pages tidak menjalankan server. Tampilan di sana membaca snapshot.json. */
+export function isStaticHost() {
+  return typeof location !== 'undefined' && /(^|\.)github\.io$/.test(location.hostname);
+}
+
+const STATIC_MSG = 'Ini tampilan untuk dilihat. Perubahan hanya tersimpan di server internal.';
+
+let snapPromise = null;
+function loadSnapshot() {
+  if (!snapPromise) {
+    snapPromise = fetch(new URL('../snapshot.json', import.meta.url)).then(async (res) => {
+      if (!res.ok) throw new Error('Data pratinjau tidak ditemukan.');
+      return res.json();
+    });
+  }
+  return snapPromise;
+}
+
+async function snapshotGet(path) {
+  const snap = await loadSnapshot();
+  if (Object.prototype.hasOwnProperty.call(snap, path)) return snap[path];
+  const bare = String(path).split('?')[0];
+  if (Object.prototype.hasOwnProperty.call(snap, bare)) return snap[bare];
+  throw new Error('Data ini tidak ada di tampilan publik.');
+}
+
 async function request(method, path, body) {
+  if (isStaticHost()) {
+    if (method === 'GET') return snapshotGet(path);
+    throw new Error(STATIC_MSG);
+  }
   const headers = {};
   const t = token();
   if (t) headers['Authorization'] = `Bearer ${t}`;
@@ -68,6 +98,7 @@ export const api = {
   /* Permintaan tanpa Authorization header, untuk endpoint publik
      (dashboard ringkasan, captcha, input tiket IT tamu). */
   publicGet: async (path) => {
+    if (isStaticHost()) return snapshotGet(path);
     let res;
     try {
       res = await fetch(path);
