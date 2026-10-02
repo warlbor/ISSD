@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const { nextNo, logActivity } = require('./db');
 const { ask: askAi } = require('./ai');
 const XLSX = require('xlsx');
-const { buildWiiQr0439Workbook, WATER_LOCATIONS } = require('./wii-qr04-39');
+const { buildWiiQr0439Workbook, buildWaterPie, WATER_LOCATIONS } = require('./wii-qr04-39');
 
 class ApiError extends Error {
   constructor(status, message) {
@@ -783,6 +783,50 @@ function createApi(db) {
     return result;
   }
 
+  /* Bulan doughnut: ?month=YYYY-MM, atau ?year=YYYY&month=1-12.
+     Tanpa parameter, bulan terakhir yang punya meter air / total m³. */
+  function waterPieQuery(q) {
+    const monthRaw = (q.get('month') || '').trim();
+    const yearRaw = (q.get('year') || '').trim();
+    const ym = /^(\d{4})-(\d{1,2})$/.exec(monthRaw);
+    if (ym) {
+      const year = Number(ym[1]);
+      const month = Number(ym[2]);
+      if (month < 1 || month > 12) throw bad('Bulan harus 1–12');
+      if (yearRaw && Number(yearRaw) !== year) throw bad('Parameter year tidak cocok dengan month');
+      return { year, month, explicit: true };
+    }
+    if (monthRaw && !/^\d{1,2}$/.test(monthRaw)) throw bad('Parameter month harus YYYY-MM');
+    if (!yearRaw && !monthRaw) return { explicit: false };
+    const year = Number(yearRaw);
+    const month = Number(monthRaw);
+    if (!Number.isInteger(year) || year < 1) throw bad('Parameter year harus diisi');
+    if (!Number.isInteger(month) || month < 1 || month > 12) throw bad('Bulan harus 1–12');
+    return { year, month, explicit: true };
+  }
+
+  function energyWaterPie(url) {
+    const q = waterPieQuery(url.searchParams);
+    let year = q.year;
+    let month = q.month;
+    if (!q.explicit) {
+      const years = db.prepare(`
+        SELECT year FROM energy_monthly
+        UNION
+        SELECT year FROM energy_locations WHERE source = 'air'
+        ORDER BY year
+      `).all();
+      if (!years.length) return buildWaterPie({});
+      year = years.at(-1).year;
+      month = undefined;
+    }
+    const monthly = db.prepare('SELECT * FROM energy_monthly WHERE year = ? ORDER BY month').all(year);
+    const airLocations = db
+      .prepare("SELECT * FROM energy_locations WHERE year = ? AND source = 'air' ORDER BY month, id")
+      .all(year);
+    return buildWaterPie({ year, month, monthly, airLocations });
+  }
+
   /* ===== Definisi rute ===== */
 
   const get = {
@@ -941,6 +985,9 @@ function createApi(db) {
         .sort((a, b) => (a.source === b.source ? b.qty - a.qty : a.source.localeCompare(b.source)));
       return { locations, months, month: wanted ? { year: y, month: m, label: `${mLabel(m)} ${y}` } : null };
     },
+
+    /* Irisan 全厂用水. Angka dari buildWaterPie / previewPie, sama dengan pie Excel. */
+    '/api/energy/water-pie': (url) => energyWaterPie(url),
 
     '/api/energy/fuels': () =>
       db.prepare('SELECT * FROM energy_fuels ORDER BY year DESC, month DESC, fuel_type').all(),

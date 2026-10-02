@@ -3,7 +3,7 @@ import { api } from '../api.js';
 import { $, renderInto, renderStats, table, row, html, esc, fmtNum, monthLabel, toast, toastOk } from '../ui.js';
 import { addButton, actionsCell } from '../crud.js';
 import { calcListrik, calcGas, calcEff } from '../calc.js';
-import { t, localizeMonthText, tx } from '../i18n.js';
+import { t, localizeMonthText, tx, getLang, localeTag } from '../i18n.js';
 
 export const id = 'energy';
 
@@ -221,6 +221,117 @@ export async function load() {
   loadFuels();
 }
 
+/* ===== Doughnut air seluruh pabrik (irisan yang sama dengan pie Excel) ===== */
+const PIE_COLORS = {
+  production: '#2ee6c7',
+  boiler: '#38bdf8',
+  otherPhase2: '#f5b942',
+  otherPhase1: '#c4b5fd',
+  technology: '#fb7185',
+  quality: '#a3e635'
+};
+
+let waterPieSeq = 0;
+
+function fmtPct(ratio) {
+  return `${(Number(ratio) * 100).toLocaleString(localeTag(), {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1
+  })}%`;
+}
+
+function sliceName(slice) {
+  const key = `energy.pie.cat.${slice.key}`;
+  const name = t(key);
+  if (name !== key) return name;
+  return getLang() === 'en' ? (slice.labelEn || slice.label) : (slice.labelId || slice.label);
+}
+
+function pieMonthText(data) {
+  if (!data || !data.year || !data.month) return '';
+  return `${monthLabel(data.month)} ${data.year}`;
+}
+
+function donutSvg(slices, muted) {
+  const r = 40;
+  const circ = 2 * Math.PI * r;
+  const track = muted ? 'rgba(148,184,214,0.12)' : 'rgba(148,184,214,0.18)';
+  let cursor = 0;
+  const rings = (slices || []).map((slice) => {
+    const len = Math.max(0, Number(slice.percent) || 0) * circ;
+    const start = cursor;
+    cursor += len;
+    if (len < 0.4) return '';
+    const color = PIE_COLORS[slice.key] || '#8ea3bb';
+    const full = len >= circ - 0.4;
+    const dash = full ? '' : ` stroke-dasharray="${len.toFixed(3)} ${(circ - len).toFixed(3)}" stroke-dashoffset="${(-start).toFixed(3)}"`;
+    return `<circle cx="60" cy="60" r="${r}" fill="none" stroke="${color}" stroke-width="16"${dash}></circle>`;
+  }).join('');
+  return `<svg class="water-pie-svg" viewBox="0 0 120 120" aria-hidden="true">
+    <g transform="rotate(-90 60 60)">
+      <circle cx="60" cy="60" r="${r}" fill="none" stroke="${track}" stroke-width="16"></circle>
+      ${rings}
+    </g>
+  </svg>`;
+}
+
+function renderWaterPie(data) {
+  const el = $('waterPie');
+  if (!el) return;
+  const empty = !data || data.empty || !Number(data.total);
+  el.classList.toggle('is-empty', empty);
+  const when = pieMonthText(data);
+  const title = t('energy.pie.title');
+  const excel = data && data.title ? data.title : '';
+  const totalTxt = empty ? '—' : fmtNum(data.total);
+  const aria = empty
+    ? (when ? t('energy.pie.empty', { month: when }) : t('energy.pie.emptyPlain'))
+    : t('energy.pie.aria', { title, month: when, total: fmtNum(data.total) });
+  const legend = empty
+    ? `<p class="small water-pie-note">${esc(when ? t('energy.pie.empty', { month: when }) : t('energy.pie.emptyPlain'))}</p>`
+    : `<ul class="water-pie-legend">${(data.slices || []).map((slice) => `
+        <li>
+          <span class="water-pie-swatch" style="background:${PIE_COLORS[slice.key] || '#8ea3bb'}"></span>
+          <span class="water-pie-label">
+            <span class="water-pie-name">${esc(sliceName(slice))}</span>
+            <span class="water-pie-zh">${esc(slice.label || '')}</span>
+          </span>
+          <span class="water-pie-num"><b>${esc(fmtNum(slice.value))}</b><span>${esc(fmtPct(slice.percent))}</span></span>
+        </li>`).join('')}</ul>`;
+  renderInto('waterPie', html(`
+    <div class="water-pie-head">
+      <h4>${esc(title)}</h4>
+      ${excel ? `<span class="water-pie-excel">${esc(excel)}</span>` : ''}
+    </div>
+    <div class="water-pie-chart" role="img" aria-label="${esc(aria)}">
+      ${donutSvg(empty ? [] : data.slices, empty)}
+      <div class="water-pie-center">
+        <strong>${esc(totalTxt)}</strong>
+        <span class="water-pie-unit">m³</span>
+        ${when ? `<span class="water-pie-when">${esc(when)}</span>` : ''}
+      </div>
+    </div>
+    ${legend}
+  `));
+}
+
+async function loadWaterPie(month) {
+  const seq = ++waterPieSeq;
+  if (!month) {
+    renderWaterPie(null);
+    return;
+  }
+  try {
+    const data = await api.get(`/api/energy/water-pie?month=${encodeURIComponent(month)}`);
+    if (seq !== waterPieSeq) return;
+    renderWaterPie(data);
+  } catch (err) {
+    if (seq !== waterPieSeq) return;
+    renderWaterPie(null);
+    toast(tx(err.message));
+  }
+}
+
 /* ===== Pemakaian per lokasi/meter + selisih vs bulan sebelumnya ===== */
 async function loadLocations(month) {
   try {
@@ -258,6 +369,8 @@ async function loadLocations(month) {
       makeTable('listrik', t('energy.loc.power')) + makeTable('air', t('energy.loc.water')) ||
       `<p class="small">${esc(t('energy.loc.empty'))}</p>`
     ));
+    const selectedMonth = (sel && sel.value) || month || '';
+    loadWaterPie(selectedMonth);
   } catch (err) {
     toast(err.message);
   }

@@ -24,6 +24,7 @@ const paths = [
   '/api/public/dashboard',
   '/api/energy',
   '/api/energy/locations',
+  '/api/energy/water-pie',
   '/api/energy/fuels',
   '/api/safety',
   '/api/ga',

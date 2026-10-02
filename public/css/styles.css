@@ -549,3 +549,119 @@ label.check input { width: auto; margin: 0; }
   .main { padding: 18px; }
   .site-foot { padding: 12px 18px 16px; }
 }
+
+/* Doughnut air seluruh pabrik. Datar, selaras pie WII-QR04-39, bukan 3D. */
+figure.water-pie {
+  display: grid;
+  grid-template-columns: 176px minmax(0, 1fr);
+  gap: 8px 18px;
+  align-items: center;
+  margin: 16px 0 2px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.water-pie-head {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+}
+.water-pie-head h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #f4f8fc;
+}
+.water-pie-excel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-align: right;
+}
+.water-pie-chart {
+  position: relative;
+  width: 176px;
+  height: 176px;
+  margin: 0 auto;
+}
+.water-pie-svg { width: 100%; height: 100%; display: block; }
+.water-pie-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 86px;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  pointer-events: none;
+  line-height: 1.15;
+}
+.water-pie-center strong {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.water-pie.is-empty .water-pie-center strong { color: #5c7086; font-weight: 700; }
+.water-pie-unit {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+.water-pie.is-empty .water-pie-unit { color: #5c7086; }
+.water-pie-when {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.water-pie-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.water-pie-legend li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+.water-pie-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.water-pie-label {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 6px;
+}
+.water-pie-name { font-size: 12.5px; font-weight: 700; color: var(--ink); }
+.water-pie-zh { font-size: 11px; font-weight: 600; color: var(--muted); }
+.water-pie-num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.water-pie-num b { display: block; font-size: 12.5px; color: #d7fff6; }
+.water-pie-num span { font-size: 11px; color: var(--muted); }
+.water-pie-note { margin: 0; }
+
+@media (max-width: 720px) {
+  figure.water-pie { grid-template-columns: 1fr; justify-items: center; }
+  .water-pie-legend, .water-pie-note { width: 100%; }
+}
