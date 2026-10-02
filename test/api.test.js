@@ -420,8 +420,13 @@ function fileToBase64(p) {
   return fs.readFileSync(p).toString('base64');
 }
 
-test('import file listrik legacy mengisi electricity_kwh per bulan', async () => {
-  const file = fileToBase64(path.join(__dirname, '..', 'Energy Report', '电力月报Monthly+Electricity+Report+2026.xlsx'));
+test('import file listrik legacy mengisi electricity_kwh per bulan', async (t) => {
+  const src = path.join(__dirname, '..', 'Energy Report', '电力月报Monthly+Electricity+Report+2026.xlsx');
+  if (!fs.existsSync(src)) {
+    t.skip('file Energy Report tidak ada di workspace');
+    return;
+  }
+  const file = fileToBase64(src);
   const result = await post('/api/energy/import', { file }, 'importer');
   assert.ok(result.monthly > 0, 'harus ada data listrik yang ter-import');
   const rows = api.get['/api/energy'](url('/api/energy')).monthly;
@@ -430,8 +435,13 @@ test('import file listrik legacy mengisi electricity_kwh per bulan', async () =>
   assert.ok(jan.electricity_kwh > 0, 'kWh Januari harus > 0');
 });
 
-test('import file air & gas legacy mengisi water_m3 dan gas_m3 per bulan', async () => {
-  const file = fileToBase64(path.join(__dirname, '..', 'Energy Report', 'WII-QR04-39_LAPORAN AIR DAN GAS 2026.xlsx'));
+test('import file air & gas legacy mengisi water_m3 dan gas_m3 per bulan', async (t) => {
+  const src = path.join(__dirname, '..', 'Energy Report', 'WII-QR04-39_LAPORAN AIR DAN GAS 2026.xlsx');
+  if (!fs.existsSync(src)) {
+    t.skip('file Energy Report tidak ada di workspace');
+    return;
+  }
+  const file = fileToBase64(src);
   const result = await post('/api/energy/import', { file }, 'importer');
   assert.ok(result.monthly > 0, 'harus ada data air/gas yang ter-import');
   const rows = api.get['/api/energy'](url('/api/energy')).monthly;
@@ -496,6 +506,50 @@ test('tiket publik tanpa field wajib ditolak', async () => {
     ),
     /wajib diisi/i
   );
+});
+
+test('impor WII-QR04-39 lalu ekspor memakai rumus form dan pie 3D', async () => {
+  const aoa = [
+    ['WII-QR04-39'],
+    ['能耗月度报表\n Energy Consumption Monthly Report  -2026'],
+    [], [], [], [], [],
+    ['7/1-7/31', 525, 701, 4, 360, 360, 154, 154, 1398, 2530, 479, 3928, 6665, 1270, 7723]
+  ];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), '2026');
+  const file = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+  const imported = await post('/api/energy/import', { file }, 'importer');
+  assert.ok(imported.monthly >= 1);
+
+  const boiler = db.prepare(
+    "SELECT qty FROM energy_locations WHERE year=2026 AND month=7 AND source='air' AND location='Boiler Room (Phase 1)'"
+  ).get();
+  const sewage = db.prepare(
+    "SELECT qty FROM energy_locations WHERE year=2026 AND month=7 AND source='air' AND location='Sewage treatment capacity'"
+  ).get();
+  assert.strictEqual(boiler.qty, 525);
+  assert.strictEqual(sewage.qty, 1270);
+
+  const exp = await api.get['/api/energy/report-export'](url('/api/energy/report-export?year=2026&month=7'));
+  assert.strictEqual(exp.filename, 'WII-QR04-39_2026.xlsx');
+  assert.strictEqual(exp.chartMonth, 7);
+  const out = XLSX.read(Buffer.from(exp.data, 'base64'), { type: 'buffer' });
+  const ws = out.Sheets['2026'];
+  assert.match(String(ws.A2.v), /Energy Consumption Monthly Report\s+-2026/);
+  assert.strictEqual(String(ws.E14.f).replace(/\s+/g, ''), '(M14-B14-C14-D14-L14-K14)*0.35');
+  assert.strictEqual(String(ws.L14.f).replace(/\s+/g, ''), 'SUM(I14:J14)');
+  assert.strictEqual(ws.B14.v, 525);
+  assert.strictEqual(ws.M14.v, 6665);
+  assert.strictEqual(ws.O14.v, 7723);
+  assert.strictEqual(ws.N14.v, 1270);
+  assert.strictEqual(ws.E29.v, 3235);
+  assert.strictEqual(ws.F29.v, 1923);
+  assert.strictEqual(String(ws.L29.f).replace(/\s+/g, ''), 'C26-K29');
+  const JSZip = require('jszip');
+  const chart = await JSZip.loadAsync(Buffer.from(exp.data, 'base64')).then((z) => z.file('xl/charts/chart1.xml').async('string'));
+  assert.match(chart, /pie3DChart/);
+  assert.match(chart, /7月份全厂用水/);
+  assert.match(chart, /'2026'!\$E\$27:\$J\$27/);
 });
 
 test('rate limit: 5 tiket publik per jam per IP lalu ditolak', async () => {

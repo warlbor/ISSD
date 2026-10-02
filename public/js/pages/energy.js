@@ -313,7 +313,15 @@ async function loadFuels() {
 async function downloadReport() {
   try {
     toast(t('energy.exportPrep'));
-    const res = await api.get('/api/energy/report-export');
+    const sel = $('locMonth');
+    const params = new URLSearchParams();
+    const match = /^(\d{4})-(\d{1,2})$/.exec((sel && sel.value) || '');
+    if (match) {
+      params.set('year', match[1]);
+      params.set('month', String(Number(match[2])));
+    }
+    const qs = params.toString();
+    const res = await api.get(`/api/energy/report-export${qs ? `?${qs}` : ''}`);
     const binary = atob(res.data);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);

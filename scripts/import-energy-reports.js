@@ -165,7 +165,8 @@ const WATER_LOC_COLS = [
   { col: 7, name: 'Quality Control Lab' },
   { col: 8, name: 'Boiler Room (Phase 2)' },
   { col: 9, name: 'Workshop Production (Phase 2)' },
-  { col: 10, name: 'Daily Water Use (Phase 2)' }
+  { col: 10, name: 'Daily Water Use (Phase 2)' },
+  { col: 13, name: 'Sewage treatment capacity' }
 ];
 
 function parseWaterGas(file) {
