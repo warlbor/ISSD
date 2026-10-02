@@ -220,7 +220,7 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'GET') {
         const handler = api.get[url.pathname];
         if (!handler) return json(res, 404, { error: 'Endpoint tidak ditemukan' });
-        return json(res, 200, handler(url));
+        return json(res, 200, await handler(url));
       }
       if (req.method === 'POST') {
         const body = await readBody(req);
@@ -238,7 +238,7 @@ const server = http.createServer(async (req, res) => {
       if (req.method === 'GET') {
         const handler = api.get[url.pathname];
         if (!handler) return json(res, 404, { error: 'Endpoint tidak ditemukan' });
-        return json(res, 200, handler(url));
+        return json(res, 200, await handler(url));
       }
 
       if (url.pathname === '/api/it/tickets/public') {
@@ -253,7 +253,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET') {
       const handler = api.get[url.pathname];
       if (!handler) return json(res, 404, { error: 'Endpoint tidak ditemukan' });
-      return json(res, 200, handler(url));
+      return json(res, 200, await handler(url));
     }
     return json(res, 405, { error: 'Method tidak diizinkan' });
   } catch (err) {

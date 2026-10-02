@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const { nextNo, logActivity } = require('./db');
 const { ask: askAi } = require('./ai');
 const XLSX = require('xlsx');
+const { buildWiiQr0439Workbook, WATER_LOCATIONS } = require('./wii-qr04-39');
 
 class ApiError extends Error {
   constructor(status, message) {
@@ -500,92 +501,28 @@ function createApi(db) {
     return Buffer.from(buf).toString('base64');
   }
 
-  /* ===== Generate laporan Excel sesuai format template Energy Report =====
-
-   Dibangun dari data yang diinput via form/import:
-   - Sheet "Air dan Gas YYYY": baris periode "1/1-1/31", kolom lokasi air
-     Phase 1 & 2, total, dan gas (MMbtu) — meniru WII-QR04-39.
-   - Sheet "Listrik YYYY": baris lokasi/meter, per bulan blok [kWh, %, loss]
-     — meniru 电力月报.
-   - Sheet "BBM": pemakaian solar/petrol/lainnya dari form input. */
-  function generateEnergyReportExport(year) {
-    const wb = XLSX.utils.book_new();
-
-    /* ---- Sheet Air dan Gas ---- */
+  /* Laporan WII-QR04-39 (layout + rumus form 2026) plus lembar listrik dan BBM. */
+  async function generateEnergyReportExport(year, chartMonth) {
     const monthly = db.prepare('SELECT * FROM energy_monthly WHERE year=? ORDER BY month').all(year);
-    const locAir = db
-      .prepare("SELECT * FROM energy_locations WHERE year=? AND source='air' ORDER BY month")
+    const airLocations = db
+      .prepare("SELECT * FROM energy_locations WHERE year=? AND source='air' ORDER BY month, id")
       .all(year);
-    const airByMonth = {};
-    for (const r of locAir) {
-      airByMonth[r.month] = airByMonth[r.month] || {};
-      airByMonth[r.month][r.location] = r.qty;
-    }
-    const AIR_COLS = [
-      'Boiler Room (Phase 1)', 'Workshop Production (Phase 1)', 'Secondary Workshop NF (Phase 1)',
-      'Daily Water Use - 5D', 'Office 5D1', 'Technology Center', 'Quality Control Lab',
-      'Boiler Room (Phase 2)', 'Workshop Production (Phase 2)', 'Daily Water Use (Phase 2)'
-    ];
-    const wgRows = [];
-    for (let m = 1; m <= 12; m++) {
-      const row = monthly.find((r) => r.month === m);
-      if (!row) continue;
-      const locs = airByMonth[m] || {};
-      wgRows.push({
-        'Date': `${m}/1-${m}/${new Date(year, m, 0).getDate()}`,
-        ...Object.fromEntries(AIR_COLS.map((c) => [c, locs[c] !== undefined && locs[c] !== null ? Math.round(locs[c] * 100) / 100 : ''])),
-        'Total water (m3)': row.water_m3 || '',
-        'Gas usage (MMbtu)': row.gas_m3 || ''
-      });
-    }
-    const wsWg = XLSX.utils.json_to_sheet(wgRows, {
-      header: ['Date', ...AIR_COLS, 'Total water (m3)', 'Gas usage (MMbtu)']
-    });
-    XLSX.utils.book_append_sheet(wb, wsWg, `Air dan Gas ${year}`);
-
-    /* ---- Sheet Listrik: blok per bulan [kWh, %, loss] ---- */
-    const locElek = db
-      .prepare("SELECT * FROM energy_locations WHERE year=? AND source='listrik' ORDER BY month")
+    const elecLocations = db
+      .prepare("SELECT * FROM energy_locations WHERE year=? AND source='listrik' ORDER BY month, id")
       .all(year);
-    const monthsE = [...new Set(locElek.map((r) => r.month))].sort((a, b) => a - b);
-    const byLoc = {};
-    for (const r of locElek) {
-      byLoc[r.location] = byLoc[r.location] || { department: r.department, months: {} };
-      byLoc[r.location].months[r.month] = { qty: r.qty, loss: r.loss };
-    }
-    const head1 = ['No', 'Department', 'Location'];
-    const head2 = ['', '', ''];
-    for (const m of monthsE) {
-      head1.push(`${MONTHS[m]} ${year}`, '', '');
-      head2.push('kWh', '%', 'loss');
-    }
-    const eRows = [head1, head2];
-    Object.entries(byLoc).forEach(([location, v], i) => {
-      const line = [i + 1, v.department || '', location];
-      for (const m of monthsE) {
-        const d = v.months[m];
-        const lossVal = d && d.loss !== null && d.loss !== undefined ? Math.round(d.loss * 100) / 100 : '';
-        line.push(d ? Math.round(d.qty * 100) / 100 : '', d && d.qty ? Math.round((d.qty / locElek.filter((x) => x.month === m).reduce((a, x) => a + x.qty, 0)) * 1000) / 10 : '', lossVal);
-      }
-      eRows.push(line);
-    });
-    const totalLine = ['TOTAL', '', ''];
-    for (const m of monthsE) {
-      totalLine.push(Math.round(monthly.find((r) => r.month === m)?.electricity_kwh || 0), '100%', '');
-    }
-    eRows.push(totalLine);
-    const wsE = XLSX.utils.aoa_to_sheet(eRows);
-    XLSX.utils.book_append_sheet(wb, wsE, `Listrik ${year}`);
-
-    /* ---- Sheet BBM (bahan bakar dari form input) ---- */
     const fuels = db.prepare('SELECT * FROM energy_fuels WHERE year=? ORDER BY month, fuel_type').all(year);
-    const wsF = XLSX.utils.json_to_sheet(
-      fuels.map((f) => ({ Year: f.year, Month: f.month, 'Fuel Type': f.fuel_type, Qty: f.qty, Unit: f.unit, Note: f.note || '' }))
-    );
-    XLSX.utils.book_append_sheet(wb, wsF, 'BBM');
-
-    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-    return Buffer.from(buf).toString('base64');
+    const built = await buildWiiQr0439Workbook({
+      year,
+      chartMonth,
+      monthly,
+      airLocations,
+      elecLocations,
+      fuels
+    });
+    return {
+      chartMonth: built.chartMonth,
+      data: Buffer.from(built.buffer).toString('base64')
+    };
   }
 
   function mergeEnergyMonth(year, month, values, actor) {
@@ -757,46 +694,50 @@ function createApi(db) {
     }
   }
 
+  function sheetNumber(v) {
+    if (v === null || v === undefined || String(v).trim() === '') return null;
+    const n = Number(String(v).replace(/[,\s]/g, ''));
+    return Number.isFinite(n) ? n : null;
+  }
+
+  /* Baris "1/1-1/31" pada sheet tahun. Kolom tetap seperti WII-QR04-39:
+     12 = total air, 14 = gas (MMbtu), plus meter per titik (termasuk
+     sewage). Angka hasil rumus harian ikut disimpan supaya panel lokasi
+     tetap terisi; ekspor menulis ulang E–H dan L sebagai rumus. */
   function importLegacyWaterGas(wb, actor, result) {
+    const delLoc = db.prepare("DELETE FROM energy_locations WHERE year=? AND month=? AND source='air'");
+    const insLoc = db.prepare(
+      `INSERT INTO energy_locations (year,month,source,location,qty,updated_at,updated_by)
+       VALUES (?,?, 'air', ?, ?, datetime('now','localtime'), ?)`
+    );
     for (const sheetName of wb.SheetNames) {
       const yearMatch = /^(\d{4})$/.exec(sheetName.trim());
       if (!yearMatch) continue;
       const year = Number(yearMatch[1]);
-      const ws = wb.Sheets[sheetName];
-      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-      if (!rows.length) continue;
-
-      let dateCol = null;
-      let waterCol = null;
-      let gasCol = null;
-      for (let i = 0; i < Math.min(6, rows.length); i++) {
-        for (const [col, val] of Object.entries(rows[i])) {
-          const text = String(val).toLowerCase();
-          if (text.includes('日期') || text.includes('date')) dateCol = col;
-          if (text.includes('总表用水量') || text.includes('total water consumption')) waterCol = col;
-          if (text.includes('燃气使用量') || text.includes('gas usage')) gasCol = col;
-        }
-      }
-      if (!dateCol) continue;
-
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: '' });
       for (const row of rows) {
-        const dateText = String(row[dateCol] || '').trim();
-        const m = /^(\d{1,2})\/\d{1,2}-\d{1,2}\/\d{1,2}/.exec(dateText);
+        const label = String(row[0] || '').trim();
+        const m = /^(\d{1,2})\/\d{1,2}-\d{1,2}\/\d{1,2}/.exec(label);
         if (!m) continue;
         const month = Number(m[1]);
-        const water = waterCol ? Number(row[waterCol]) : NaN;
-        const gas = gasCol ? Number(row[gasCol]) : NaN;
-        if (!Number.isFinite(water) && !Number.isFinite(gas)) continue;
+        if (month < 1 || month > 12) continue;
+        const water = sheetNumber(row[12]);
+        const gas = sheetNumber(row[14]);
+        const meters = WATER_LOCATIONS.map((loc) => ({ name: loc.name, qty: sheetNumber(row[loc.col]) }))
+          .filter((loc) => loc.qty !== null);
+        if (water === null && gas === null && !meters.length) continue;
         mergeEnergyMonth(
           year,
           month,
           {
-            water_m3: Number.isFinite(water) ? water : null,
-            gas_m3: Number.isFinite(gas) ? gas : null
+            water_m3: water,
+            gas_m3: gas
           },
           actor
         );
         result.monthly++;
+        delLoc.run(year, month);
+        for (const loc of meters) insLoc.run(year, month, loc.name, loc.qty, actor || 'anonim');
       }
     }
   }
@@ -1004,17 +945,22 @@ function createApi(db) {
     '/api/energy/fuels': () =>
       db.prepare('SELECT * FROM energy_fuels ORDER BY year DESC, month DESC, fuel_type').all(),
 
-    /* Generate laporan Excel sesuai format template di folder "Energy Report".
-       ?year=YYYY (default tahun terakhir yang ada datanya). */
-    '/api/energy/report-export': (url) => {
+    /* Generate laporan Excel WII-QR04-39.
+       ?year=YYYY (default tahun terakhir). ?month=1-12 memilih bulan
+       grafik 全厂用水; kosong = bulan terakhir yang ada datanya. */
+    '/api/energy/report-export': async (url) => {
       const q = url.searchParams;
       const avail = db.prepare('SELECT DISTINCT year FROM energy_monthly ORDER BY year').all().map((r) => r.year);
       if (!avail.length) throw bad('Belum ada data energi untuk diekspor');
       const lastAvail = avail.at(-1);
-      const year = Number(q.get('year')) || lastAvail;
+      let year = Number(q.get('year'));
+      if (!Number.isInteger(year) || year < 1) year = lastAvail;
+      const month = Number(q.get('month'));
+      const exported = await generateEnergyReportExport(year, month);
       return {
-        filename: `Energy_Report_${year}.xlsx`,
-        data: generateEnergyReportExport(year)
+        filename: `WII-QR04-39_${year}.xlsx`,
+        chartMonth: exported.chartMonth,
+        data: exported.data
       };
     },
 

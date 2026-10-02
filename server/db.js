@@ -318,11 +318,10 @@ function migrate(db) {
 }
 
 function ensureSettings(db) {
-  const n = db.prepare('SELECT COUNT(*) AS n FROM app_settings').get().n;
-  if (n === 0) {
-    const ins = db.prepare('INSERT INTO app_settings (key,value,label,unit) VALUES (?,?,?,?)');
-    for (const row of SETTINGS_DEFAULT) ins.run(...row);
-  }
+  // seed_done sudah mengisi satu baris sebelum default tarif sempat ditulis.
+  // INSERT OR IGNORE mengisi kunci yang belum ada tanpa menimpa nilai pengguna.
+  const ins = db.prepare('INSERT OR IGNORE INTO app_settings (key,value,label,unit) VALUES (?,?,?,?)');
+  for (const row of SETTINGS_DEFAULT) ins.run(...row);
   /* Gas dilaporkan dalam MMbtu (bukan Nm³) — perbarui label lama. */
   db.prepare("UPDATE app_settings SET unit='Rp/MMbtu' WHERE key='harga_gas' AND unit='Rp/Nm³'").run();
   db.prepare("UPDATE app_settings SET unit='MMbtu/bulan' WHERE key='target_gas' AND unit='m³/bulan'").run();
