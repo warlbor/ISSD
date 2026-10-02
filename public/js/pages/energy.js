@@ -99,7 +99,7 @@ async function importEnergy() {
   const input = $('energyFile');
   const resultEl = $('importResult');
   if (!input.files[0]) {
-    resultEl.textContent = 'Pilih file Excel terlebih dahulu.';
+    resultEl.textContent = 'Pilih berkas Excel terlebih dahulu.';
     return;
   }
   try {
@@ -207,7 +207,8 @@ export async function load() {
         const yoyTxt = yoy === null
           ? '—'
           : `<span style="color:${yoy > 0 ? '#ef4444' : '#22c55e'}">${yoy > 0 ? '▲' : '▼'} ${Math.abs(yoy).toFixed(1)}%</span>`;
-        return `<tr${highlighted ? ' style="background:#eff6ff;font-weight:700"' : ''}${r.excluded ? ' class="excluded"' : ''}>
+        const cls = [highlighted ? 'row-current' : '', r.excluded ? 'excluded' : ''].filter(Boolean).join(' ');
+        return `<tr${cls ? ` class="${cls}"` : ''}>
           <td>${monthLabel(r.month)} ${r.year}${r.note ? ' *' : ''}</td>
           <td>${fmtNum(r.electricity_kwh)}</td>
           <td>${yoyTxt}</td>
@@ -215,7 +216,7 @@ export async function load() {
           <td>${fmtNum(r.water_m3)}</td>
           <td>${actionsCell('energy_monthly', r).__html}</td>
         </tr>`;
-      }).concat([`<tr style="background:#f0fdf4"><td><b>YTD TOTAL</b></td><td><b>${fmtNum(Math.round(ytd.k))}</b></td><td></td><td><b>${fmtNum(ytd.g)}</b></td><td><b>${fmtNum(ytd.w)}</b></td><td></td></tr>`])
+      }).concat([`<tr class="row-total"><td><b>YTD TOTAL</b></td><td><b>${fmtNum(Math.round(ytd.k))}</b></td><td></td><td><b>${fmtNum(ytd.g)}</b></td><td><b>${fmtNum(ytd.w)}</b></td><td></td></tr>`])
     )
   );
 
@@ -333,8 +334,76 @@ async function downloadReport() {
   }
 }
 
+function formatFileSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${Math.round(kb).toLocaleString('id-ID')} KB`;
+  return `${(kb / 1024).toLocaleString('id-ID', { maximumFractionDigits: 1 })} MB`;
+}
+
+function showEnergyFile(file) {
+  const label = $('energyFileLabel');
+  const hint = $('energyFileHint');
+  const zone = $('energyDrop');
+  if (!label || !hint || !zone) return;
+  if (!file) {
+    label.textContent = 'Letakkan berkas Excel di sini';
+    label.removeAttribute('title');
+    hint.textContent = '.xlsx atau .xls · klik untuk memilih';
+    zone.classList.remove('has-file');
+    return;
+  }
+  label.textContent = file.name;
+  label.title = file.name;
+  hint.textContent = `${formatFileSize(file.size)} · siap diimpor`;
+  zone.classList.add('has-file');
+  const resultEl = $('importResult');
+  const stale = resultEl && (
+    resultEl.textContent === 'Pilih berkas Excel terlebih dahulu.' ||
+    resultEl.textContent === 'Berkas harus berformat .xlsx atau .xls.'
+  );
+  if (stale) resultEl.textContent = '';
+}
+
+function bindEnergyImport() {
+  const zone = $('energyDrop');
+  const input = $('energyFile');
+  if (!zone || !input || zone.dataset.wired) return;
+  zone.dataset.wired = '1';
+  input.addEventListener('change', () => showEnergyFile(input.files[0]));
+  zone.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    zone.classList.add('is-drag');
+  });
+  zone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+    zone.classList.add('is-drag');
+  });
+  zone.addEventListener('dragleave', (e) => {
+    if (e.relatedTarget && zone.contains(e.relatedTarget)) return;
+    zone.classList.remove('is-drag');
+  });
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    zone.classList.remove('is-drag');
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!file) return;
+    if (!/\.xlsx?$/i.test(file.name)) {
+      const resultEl = $('importResult');
+      if (resultEl) resultEl.textContent = 'Berkas harus berformat .xlsx atau .xls.';
+      return;
+    }
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    input.files = dt.files;
+    showEnergyFile(file);
+  });
+}
+
 export function mount() {
   bindTabs();
+  bindEnergyImport();
   $('btnListrik').onclick = recalcListrik;
   $('btnGas').onclick = recalcGas;
   $('btnEff').onclick = recalcEff;
