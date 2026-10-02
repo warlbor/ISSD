@@ -98,17 +98,27 @@
     <section id="energy" class="hidden">
       <div class="title">⚡ Energy Management</div>
       <div class="sub">Pemantauan konsumsi energi dari tabel <b>energy_monthly</b> di SQLite.</div>
-      <div class="panel">
-        <h3>Import Data Energi dari Excel</h3>
-        <p class="small">Upload file Excel (format Energy Report). Sheet <b>Monthly</b> dan <b>Departments</b> akan diimpor.</p>
-        <div class="import-row">
-          <input type="file" id="energyFile" accept=".xlsx,.xls">
-          <button type="button" id="btnImportEnergy" class="btn-import">⬆ Import Excel</button>
+      <div class="energy-import-layout">
+        <div class="panel energy-import">
+          <h3>Import Data Energi dari Excel</h3>
+          <p class="small">Unggah berkas Excel (format Energy Report). Sheet <b>Monthly</b> dan <b>Departments</b> akan diimpor.</p>
+          <label class="dropzone" id="energyDrop">
+            <input type="file" id="energyFile" accept=".xlsx,.xls">
+            <span class="dropzone-ico" aria-hidden="true">📄</span>
+            <span class="dropzone-copy">
+              <span class="dropzone-title" id="energyFileLabel">Letakkan berkas Excel di sini</span>
+              <span class="dropzone-hint" id="energyFileHint">.xlsx atau .xls · klik untuk memilih</span>
+            </span>
+          </label>
+          <div class="import-actions">
+            <button type="button" id="btnImportEnergy" class="btn-import">⬆ Impor Excel</button>
+            <button type="button" id="btnExportReport" class="secondary">📤 Ekspor Laporan</button>
+          </div>
         </div>
-        <div class="grid-3" style="margin-top:10px">
-          <div style="grid-column:1 / -1"><button type="button" id="btnExportReport" class="secondary" style="width:100%">📤 Generate Laporan Excel (format Energy Report)</button></div>
+        <div class="panel energy-import-preview">
+          <h3>Hasil Impor</h3>
+          <div id="importResult" class="result import-status"></div>
         </div>
-        <div id="importResult" class="result" style="margin-top:12px"></div>
       </div>
       <div class="stat-row" id="energyStats"></div>
       <div class="panel" style="margin-bottom:16px">
@@ -157,21 +167,21 @@
             <button class="tab" type="button" data-etab="1">Gas Alam</button>
             <button class="tab" type="button" data-etab="2">Efisiensi & Air</button>
           </div>
-          <div id="et0">
+          <div id="et0" class="calc-pane">
             <label>Pemakaian Listrik (kWh)</label><input id="ekwh" type="number" placeholder="isi dari data bulan ini">
             <label>Baseline Bulan Lalu (kWh)</label><input id="ebase" type="number" placeholder="bulan lalu">
             <label>Tarif per kWh (Rp)</label><input id="etarif" type="number" value="1467">
             <button type="button" id="btnListrik">Hitung Analisis</button>
             <div id="eRes" class="result"></div>
           </div>
-          <div id="et1" class="hidden">
+          <div id="et1" class="calc-pane hidden">
             <label>Pemakaian Gas (MMbtu)</label><input id="gas1" type="number" placeholder="MMbtu bulan ini">
             <label>Harga Gas per MMbtu (Rp)</label><input id="gas2" type="number" value="9500">
             <label>Konversi (MWh per MMbtu)</label><input id="gas3" type="number" value="0.2931" step="0.0001">
             <button type="button" id="btnGas">Hitung</button>
             <div id="eRes2" class="result"></div>
           </div>
-          <div id="et2" class="hidden">
+          <div id="et2" class="calc-pane hidden">
             <label>Konsumsi Awal</label><input id="eff1" type="number" placeholder="konsumsi awal">
             <label>Konsumsi Setelah Perbaikan</label><input id="eff2" type="number" placeholder="setelah perbaikan">
             <label>Volume Aktivitas</label><input id="eff3" type="number" placeholder="volume aktivitas">

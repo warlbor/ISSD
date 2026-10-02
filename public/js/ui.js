@@ -123,7 +123,7 @@ export function table(headers, rows, opts = {}) {
     .map((h, i) => `<th${opts.align && opts.align[i] ? ` class="ta-${opts.align[i]}"` : ''}>${esc(h)}</th>`)
     .join('')}</tr>`;
   return html(
-    `<div class="table-scroll"><table class="table">${head}<tbody>${body.map((r) => (isHtml(r) ? r.__html : String(r || ''))).join('')}</tbody></table></div>`
+    `<div class="table-scroll"><table class="table"><thead>${head}</thead><tbody>${body.map((r) => (isHtml(r) ? r.__html : String(r || ''))).join('')}</tbody></table></div>`
   );
 }
 
