@@ -550,6 +550,41 @@ test('impor WII-QR04-39 lalu ekspor memakai rumus form dan pie 3D', async () => 
   assert.match(chart, /pie3DChart/);
   assert.match(chart, /7月份全厂用水/);
   assert.match(chart, /'2026'!\$E\$27:\$J\$27/);
+
+  const pie = api.get['/api/energy/water-pie'](url('/api/energy/water-pie?month=2026-07'));
+  assert.strictEqual(pie.empty, false);
+  assert.strictEqual(pie.chartMonth, 7);
+  assert.strictEqual(pie.monthKey, '2026-07');
+  assert.strictEqual(pie.title, '7月份全厂用水');
+  assert.strictEqual(pie.total, 6665);
+  assert.strictEqual(pie.unit, 'm³');
+  assert.deepStrictEqual(pie.slices.map((s) => s.value), [3235, 1923, 479, 720, 154, 154]);
+  assert.deepStrictEqual(pie.slices.map((s) => s.label), ['生产', '锅炉', '二期其他用水', '一期其他用水', '技术', '品管']);
+  assert.ok(Math.abs(pie.slices[0].percent - 3235 / 6665) < 1e-12);
+
+  const byParts = api.get['/api/energy/water-pie'](url('/api/energy/water-pie?year=2026&month=7'));
+  assert.deepStrictEqual(byParts.slices.map((s) => s.value), pie.slices.map((s) => s.value));
+});
+
+test('water-pie bulan kosong tetap jawaban, parameter buruk ditolak', () => {
+  const empty = api.get['/api/energy/water-pie'](url('/api/energy/water-pie?month=2024-02'));
+  assert.strictEqual(empty.empty, true);
+  assert.strictEqual(empty.total, 0);
+  assert.strictEqual(empty.chartMonth, 2);
+  assert.strictEqual(empty.monthKey, '2024-02');
+  assert.strictEqual(empty.slices.length, 6);
+  assert.throws(
+    () => api.get['/api/energy/water-pie'](url('/api/energy/water-pie?month=2026-13')),
+    /1–12/
+  );
+  assert.throws(
+    () => api.get['/api/energy/water-pie'](url('/api/energy/water-pie?month=Juli')),
+    /YYYY-MM/
+  );
+  assert.throws(
+    () => api.get['/api/energy/water-pie'](url('/api/energy/water-pie?year=2025&month=2026-07')),
+    /tidak cocok/
+  );
 });
 
 test('rate limit: 5 tiket publik per jam per IP lalu ditolak', async () => {

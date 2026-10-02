@@ -71,12 +71,12 @@ const WATER_LOCATIONS = [
 ];
 
 const PIE_CATEGORIES = [
-  { col: 'E', label: '生产', source: (r) => `ROUND(C${r}+D${r}+J${r},0)` },
-  { col: 'F', label: '锅炉', source: (r) => `ROUND(B${r}+I${r},0)` },
-  { col: 'G', label: '二期其他用水', source: (r) => `ROUND(K${r},0)` },
-  { col: 'H', label: '一期其他用水', source: (r) => `ROUND(E${r}+F${r},0)` },
-  { col: 'I', label: '技术', source: (r) => `ROUND(G${r},0)` },
-  { col: 'J', label: '品管', source: (r) => `ROUND(H${r},0)` }
+  { key: 'production', col: 'E', label: '生产', labelId: 'Produksi', labelEn: 'Production', source: (r) => `ROUND(C${r}+D${r}+J${r},0)` },
+  { key: 'boiler', col: 'F', label: '锅炉', labelId: 'Boiler', labelEn: 'Boiler', source: (r) => `ROUND(B${r}+I${r},0)` },
+  { key: 'otherPhase2', col: 'G', label: '二期其他用水', labelId: 'Air lain fase 2', labelEn: 'Other water, phase 2', source: (r) => `ROUND(K${r},0)` },
+  { key: 'otherPhase1', col: 'H', label: '一期其他用水', labelId: 'Air lain fase 1', labelEn: 'Other water, phase 1', source: (r) => `ROUND(E${r}+F${r},0)` },
+  { key: 'technology', col: 'I', label: '技术', labelId: 'Teknik', labelEn: 'Technology', source: (r) => `ROUND(G${r},0)` },
+  { key: 'quality', col: 'J', label: '品管', labelId: 'Pengendalian mutu', labelEn: 'Quality control', source: (r) => `ROUND(H${r},0)` }
 ];
 
 const MONTH_LABELS = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
@@ -561,6 +561,57 @@ function chooseChartMonth(requested, byMonth) {
   return 1;
 }
 
+/* Irisan doughnut web = cache pie 3D (baris 27), dari previewPie yang sama. */
+function waterPieSlice(cat, value, total) {
+  return {
+    key: cat.key,
+    label: cat.label,
+    labelId: cat.labelId,
+    labelEn: cat.labelEn,
+    value,
+    percent: total === 0 ? 0 : value / total
+  };
+}
+
+function buildWaterPie(payload = {}) {
+  const yearNum = Number(payload.year);
+  const hasYear = Number.isInteger(yearNum) && yearNum >= 1;
+  if (!hasYear) {
+    return {
+      year: null,
+      month: null,
+      chartMonth: null,
+      monthKey: '',
+      title: '',
+      total: 0,
+      unit: 'm³',
+      empty: true,
+      slices: PIE_CATEGORIES.map((cat) => waterPieSlice(cat, 0, 0))
+    };
+  }
+
+  const airByMonth = indexLocations(payload.airLocations);
+  const byMonth = monthInputs(yearNum, payload.monthly, airByMonth);
+  const requested = payload.month === undefined || payload.month === null || payload.month === ''
+    ? payload.chartMonth
+    : payload.month;
+  const chartMonth = chooseChartMonth(requested, byMonth);
+  const preview = previewMonth(byMonth[chartMonth] || {});
+  const pie = previewPie(preview, preview.M);
+  const total = pie.chart.reduce((sum, value) => sum + value, 0);
+  return {
+    year: yearNum,
+    month: chartMonth,
+    chartMonth,
+    monthKey: `${yearNum}-${String(chartMonth).padStart(2, '0')}`,
+    title: `${chartMonth}月份全厂用水`,
+    total,
+    unit: 'm³',
+    empty: total === 0,
+    slices: PIE_CATEGORIES.map((cat, i) => waterPieSlice(cat, pie.chart[i], total))
+  };
+}
+
 async function buildWiiQr0439Workbook(payload) {
   const year = Number(payload.year);
   const airByMonth = indexLocations(payload.airLocations);
@@ -589,6 +640,7 @@ module.exports = {
   WATER_LOCATIONS,
   PIE_CATEGORIES,
   buildWiiQr0439Workbook,
+  buildWaterPie,
   chooseChartMonth,
   monthRow,
   previewMonth,

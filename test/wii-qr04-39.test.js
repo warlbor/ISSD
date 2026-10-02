@@ -2,7 +2,35 @@ const test = require('node:test');
 const assert = require('node:assert');
 const JSZip = require('jszip');
 const XLSX = require('xlsx');
-const { buildWiiQr0439Workbook, monthRow } = require('../server/wii-qr04-39');
+const { buildWiiQr0439Workbook, buildWaterPie, monthRow } = require('../server/wii-qr04-39');
+
+const JULY_REPORT = {
+  year: 2026,
+  chartMonth: 7,
+  monthly: [
+    { year: 2026, month: 1, water_m3: 5278, gas_m3: 5387, electricity_kwh: 0 },
+    { year: 2026, month: 7, water_m3: 6665, gas_m3: 7723, electricity_kwh: 0 }
+  ],
+  airLocations: [
+    // Januari — angka form resmi, untuk cek rumus harian.
+    ['B', 1, 'Boiler Room (Phase 1)', 585],
+    ['C', 1, 'Workshop Production (Phase 1)', 990],
+    ['D', 1, 'Secondary Workshop NF (Phase 1)', 5],
+    ['I', 1, 'Boiler Room (Phase 2)', 801],
+    ['J', 1, 'Workshop Production (Phase 2)', 1896],
+    ['K', 1, 'Daily Water Use (Phase 2)', 521],
+    // Juli — sumber pie di screenshot.
+    ['B', 7, 'Boiler Room (Phase 1)', 525],
+    ['C', 7, 'Workshop Production (Phase 1)', 701],
+    ['D', 7, 'Secondary Workshop NF (Phase 1)', 4],
+    ['I', 7, 'Boiler Room (Phase 2)', 1398],
+    ['J', 7, 'Workshop Production (Phase 2)', 2530],
+    ['K', 7, 'Daily Water Use (Phase 2)', 479],
+    ['N', 7, 'Sewage treatment capacity', 1270]
+  ].map(([, month, location, qty]) => ({ year: 2026, month, location, qty })),
+  elecLocations: [],
+  fuels: []
+};
 
 function formula(ws, addr) {
   const cell = ws[addr];
@@ -12,33 +40,7 @@ function formula(ws, addr) {
 }
 
 async function julyWorkbook() {
-  const built = await buildWiiQr0439Workbook({
-    year: 2026,
-    chartMonth: 7,
-    monthly: [
-      { year: 2026, month: 1, water_m3: 5278, gas_m3: 5387, electricity_kwh: 0 },
-      { year: 2026, month: 7, water_m3: 6665, gas_m3: 7723, electricity_kwh: 0 }
-    ],
-    airLocations: [
-      // Januari — angka form resmi, untuk cek rumus harian.
-      ['B', 1, 'Boiler Room (Phase 1)', 585],
-      ['C', 1, 'Workshop Production (Phase 1)', 990],
-      ['D', 1, 'Secondary Workshop NF (Phase 1)', 5],
-      ['I', 1, 'Boiler Room (Phase 2)', 801],
-      ['J', 1, 'Workshop Production (Phase 2)', 1896],
-      ['K', 1, 'Daily Water Use (Phase 2)', 521],
-      // Juli — sumber pie di screenshot.
-      ['B', 7, 'Boiler Room (Phase 1)', 525],
-      ['C', 7, 'Workshop Production (Phase 1)', 701],
-      ['D', 7, 'Secondary Workshop NF (Phase 1)', 4],
-      ['I', 7, 'Boiler Room (Phase 2)', 1398],
-      ['J', 7, 'Workshop Production (Phase 2)', 2530],
-      ['K', 7, 'Daily Water Use (Phase 2)', 479],
-      ['N', 7, 'Sewage treatment capacity', 1270]
-    ].map(([, month, location, qty]) => ({ year: 2026, month, location, qty })),
-    elecLocations: [],
-    fuels: []
-  });
+  const built = await buildWiiQr0439Workbook(JULY_REPORT);
   const wb = XLSX.read(built.buffer, { type: 'buffer' });
   return { built, wb, ws: wb.Sheets['2026'] };
 }
@@ -142,4 +144,26 @@ test('pie 3D bulan terpilih memakai rantai alokasi form, bukan jumlah lain', asy
   assert.match(sheet, /<drawing /);
   const types = await zip.file('[Content_Types].xml').async('string');
   assert.match(types, /chart\+xml/);
+
+  const web = buildWaterPie(JULY_REPORT);
+  assert.strictEqual(web.chartMonth, 7);
+  assert.strictEqual(web.title, '7月份全厂用水');
+  assert.strictEqual(web.total, 6665);
+  assert.strictEqual(web.empty, false);
+  assert.deepStrictEqual(
+    web.slices.map((s) => s.value),
+    [ws.E27.v, ws.F27.v, ws.G27.v, ws.H27.v, ws.I27.v, ws.J27.v]
+  );
+  assert.deepStrictEqual(web.slices.map((s) => s.value), [3235, 1923, 479, 720, 154, 154]);
+  assert.deepStrictEqual(web.slices.map((s) => s.label), ['生产', '锅炉', '二期其他用水', '一期其他用水', '技术', '品管']);
+  assert.deepStrictEqual(web.slices.map((s) => s.key), ['production', 'boiler', 'otherPhase2', 'otherPhase1', 'technology', 'quality']);
+  assert.ok(Math.abs(web.slices.reduce((sum, s) => sum + s.percent, 0) - 1) < 1e-12);
+});
+
+test('bulan tanpa meter tidak meminjam irisan bulan lain', () => {
+  const empty = buildWaterPie({ ...JULY_REPORT, month: 3 });
+  assert.strictEqual(empty.chartMonth, 3);
+  assert.strictEqual(empty.empty, true);
+  assert.strictEqual(empty.total, 0);
+  assert.ok(empty.slices.every((s) => s.value === 0));
 });
