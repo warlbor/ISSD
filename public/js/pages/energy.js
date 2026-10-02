@@ -357,6 +357,12 @@ function showEnergyFile(file) {
   label.title = file.name;
   hint.textContent = `${formatFileSize(file.size)} · siap diimpor`;
   zone.classList.add('has-file');
+  const resultEl = $('importResult');
+  const stale = resultEl && (
+    resultEl.textContent === 'Pilih berkas Excel terlebih dahulu.' ||
+    resultEl.textContent === 'Berkas harus berformat .xlsx atau .xls.'
+  );
+  if (stale) resultEl.textContent = '';
 }
 
 function bindEnergyImport() {
