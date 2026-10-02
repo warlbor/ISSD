@@ -97,10 +97,17 @@
     </section>
 
     <section id="energy" class="hidden">
-      <div class="title">⚡ Energy Management</div>
-      <div class="sub">Pemantauan konsumsi energi dari tabel <b>energy_monthly</b> di SQLite.</div>
-      <div class="energy-import-layout">
-        <div class="panel energy-import">
+      <div class="energy-top">
+        <div class="energy-reading">
+          <div class="title">⚡ Energy Management</div>
+          <div class="sub">Pemantauan konsumsi energi dari tabel <b>energy_monthly</b> di SQLite.</div>
+          <div class="stat-row" id="energyStats"></div>
+          <div class="panel energy-target">
+            <h3>Progres Target Penghematan Listrik</h3>
+            <div id="energyTarget"></div>
+          </div>
+        </div>
+        <aside class="panel energy-tools" aria-label="Impor dan ekspor Excel">
           <h3>Import Data Energi dari Excel</h3>
           <p class="small">Unggah berkas Excel (format Energy Report). Sheet <b>Monthly</b> dan <b>Departments</b> akan diimpor.</p>
           <label class="dropzone" id="energyDrop">
@@ -115,16 +122,9 @@
             <button type="button" id="btnImportEnergy" class="btn-import">⬆ Impor Excel</button>
             <button type="button" id="btnExportReport" class="secondary">📤 Ekspor Laporan</button>
           </div>
-        </div>
-        <div class="panel energy-import-preview">
-          <h3>Hasil Impor</h3>
+          <h3 class="import-result-heading">Hasil Impor</h3>
           <div id="importResult" class="result import-status"></div>
-        </div>
-      </div>
-      <div class="stat-row" id="energyStats"></div>
-      <div class="panel" style="margin-bottom:16px">
-        <h3>Progres Target Penghematan Listrik</h3>
-        <div id="energyTarget"></div>
+        </aside>
       </div>
       <div class="grid">
         <div class="panel">
